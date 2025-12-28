@@ -207,6 +207,29 @@ app.get("/api/rooms/create", (req, res) => {
   res.json({ roomCode, hostKey });
 });
 
+function parseQuestions(rawText) {
+  const lines = String(rawText || "")
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
+
+  const questions = [];
+  for (const line of lines) {
+    // Format: points|question text
+    const parts = line.split("|");
+    if (parts.length < 2) continue;
+
+    const points = Number(parts[0].trim());
+    const text = parts.slice(1).join("|").trim();
+
+    if (!text) continue;
+    const pts = Number.isFinite(points) && points > 0 && points <= 100 ? Math.floor(points) : 1;
+
+    questions.push({ text, points: pts });
+  }
+  return questions;
+}
+
 io.on("connection", (socket) => {
   socket.on("joinRoom", ({ roomCode, hostKey, playerId } = {}) => {
     const code = String(roomCode || "").trim().toUpperCase();
