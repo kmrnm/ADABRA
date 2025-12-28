@@ -1,93 +1,174 @@
 <!DOCTYPE html>
 <html>
-  <head>
+
+<head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ADABRA • Play</title>
     <style>
-      body { font-family: system-ui, -apple-system, Arial; padding: 24px; }
-      .card { border: 1px solid #ddd; border-radius: 10px; padding: 16px; max-width: 520px; }
-      .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 12px 0; }
-      input { padding: 12px; font-size: 18px; width: 180px; text-transform: uppercase; }
-      button { padding: 12px 16px; font-size: 18px; cursor: pointer; }
-      #buzz { width: 100%; font-size: 34px; padding: 22px; }
-      .muted { color: #666; }
-      .ok { color: #0a7; }
-      .err { color: #c00; }
+        body {
+            font-family: system-ui, -apple-system, Arial;
+            padding: 24px;
+        }
+
+        .card {
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            padding: 16px;
+            max-width: 560px;
+        }
+
+        .row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+            margin: 12px 0;
+        }
+
+        input {
+            padding: 12px;
+            font-size: 18px;
+            width: 180px;
+            text-transform: uppercase;
+        }
+
+        button {
+            padding: 12px 16px;
+            font-size: 18px;
+            cursor: pointer;
+        }
+
+        #buzz {
+            width: 100%;
+            font-size: 34px;
+            padding: 22px;
+        }
+
+        .muted {
+            color: #666;
+        }
+
+        .ok {
+            color: #0a7;
+        }
+
+        .err {
+            color: #c00;
+        }
+
+        .pill {
+            display: inline-block;
+            padding: 6px 10px;
+            border: 1px solid #ddd;
+            border-radius: 999px;
+        }
     </style>
-  </head>
-  <body>
+</head>
+
+<body>
     <h1>ADABRA • Player</h1>
 
     <div class="card">
-      <div class="row">
-        <input id="roomCode" placeholder="ROOM" maxlength="6" />
-        <button id="join">Join</button>
-      </div>
+        <div class="row">
+            <input id="roomCode" placeholder="ROOM" maxlength="6" />
+            <button id="join">Join</button>
+        </div>
 
-      <div class="row">
-        <div class="muted">Current room:</div>
-        <div id="currentRoom" class="muted">none</div>
-      </div>
+        <div class="row">
+            <span class="pill">Room: <strong id="currentRoom" class="muted">none</strong></span>
+            <span class="pill">Phase: <strong id="phase" class="muted">—</strong></span>
+        </div>
 
-      <p id="msg" class="muted">Join a room to enable BUZZ.</p>
+        <p id="msg" class="muted">Join a room. Wait for host to Arm (beep).</p>
 
-      <button id="buzz" disabled>BUZZ</button>
+        <button id="buzz" disabled>BUZZ</button>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
-      const socket = io();
+        const socket = io();
 
-      const roomInput = document.getElementById("roomCode");
-      const joinBtn = document.getElementById("join");
-      const currentRoomEl = document.getElementById("currentRoom");
-      const msgEl = document.getElementById("msg");
-      const buzzBtn = document.getElementById("buzz");
+        const roomInput = document.getElementById("roomCode");
+        const joinBtn = document.getElementById("join");
+        const currentRoomEl = document.getElementById("currentRoom");
+        const phaseEl = document.getElementById("phase");
+        const msgEl = document.getElementById("msg");
+        const buzzBtn = document.getElementById("buzz");
 
-      function setMsg(text, cls = "muted") {
-        msgEl.className = cls;
-        msgEl.textContent = text;
-      }
+        let currentRoom = null;
+        let lastState = null;
 
-      function getQueryRoom() {
-        const params = new URLSearchParams(location.search);
-        const r = params.get("room");
-        return r ? r.trim().toUpperCase() : "";
-      }
-
-      function joinRoom(code) {
-        const roomCode = String(code || "").trim().toUpperCase();
-        if (!roomCode) return setMsg("Enter a room code.", "err");
-        socket.emit("joinRoom", { roomCode });
-      }
-
-      // Auto-fill room from link: /play?room=ABCD
-      const queryRoom = getQueryRoom();
-      if (queryRoom) {
-        roomInput.value = queryRoom;
-        joinRoom(queryRoom);
-      }
-
-      joinBtn.onclick = () => joinRoom(roomInput.value);
-
-      buzzBtn.onclick = () => socket.emit("buzz");
-
-      socket.on("joinedRoom", ({ roomCode }) => {
-        currentRoomEl.textContent = roomCode;
-        currentRoomEl.className = "ok";
-        buzzBtn.disabled = false;
-        setMsg(`Joined room ${roomCode}.`, "ok");
-      });
-
-      socket.on("buzzed", ({ by, roomCode }) => {
-        // Players will later see lockout states; for now just show last buzz
-        if (currentRoomEl.textContent === roomCode) {
-          setMsg(`Buzz in ${roomCode} by ${by}`, "ok");
+        function setMsg(text, cls = "muted") {
+            msgEl.className = cls;
+            msgEl.textContent = text;
         }
-      });
 
-      socket.on("errorMsg", (text) => setMsg(text, "err"));
+        function getQueryRoom() {
+            const params = new URLSearchParams(location.search);
+            const r = params.get("room");
+            return r ? r.trim().toUpperCase() : "";
+        }
+
+        function updateBuzzEnabled() {
+            if (!currentRoom || !lastState) {
+                buzzBtn.disabled = true;
+                return;
+            }
+            // Allowed only when armed and not locked
+            const canBuzz = lastState.phase === "armed" && !lastState.lockedBy;
+            buzzBtn.disabled = !canBuzz;
+
+            if (lastState.phase === "lobby") setMsg("Waiting: host must Arm (beep).", "muted");
+            if (lastState.phase === "armed") setMsg("Buzzer armed. Press BUZZ now.", "ok");
+            if (lastState.phase === "locked") {
+                setMsg("Locked: someone buzzed first. Wait for host.", "muted");
+            }
+        }
+
+        function joinRoom(code) {
+            const roomCode = String(code || "").trim().toUpperCase();
+            if (!roomCode) return setMsg("Enter a room code.", "err");
+            socket.emit("joinRoom", { roomCode });
+        }
+
+        const queryRoom = getQueryRoom();
+        if (queryRoom) {
+            roomInput.value = queryRoom;
+            joinRoom(queryRoom);
+        }
+
+        joinBtn.onclick = () => joinRoom(roomInput.value);
+        buzzBtn.onclick = () => socket.emit("buzz");
+
+        socket.on("joinedRoom", ({ roomCode }) => {
+            currentRoom = roomCode;
+            currentRoomEl.textContent = roomCode;
+            currentRoomEl.className = "ok";
+            setMsg(`Joined room ${roomCode}. Waiting for host...`, "ok");
+        });
+
+        socket.on("roomState", (state) => {
+            if (!currentRoom || state.roomCode !== currentRoom) return;
+            lastState = state;
+            phaseEl.textContent = state.phase;
+            phaseEl.className = state.phase === "armed" ? "ok" : "muted";
+            updateBuzzEnabled();
+        });
+
+        socket.on("buzzed", ({ by, roomCode }) => {
+            if (roomCode !== currentRoom) return;
+            // Just informational for now
+            setMsg(`Buzz by ${by}`, "ok");
+        });
+
+        socket.on("buzzRejected", ({ reason }) => {
+            if (reason === "NOT_ARMED") setMsg("False start: buzzer not armed yet.", "err");
+            if (reason === "LOCKED") setMsg("Too late: already locked.", "err");
+        });
+
+        socket.on("errorMsg", (text) => setMsg(text, "err"));
     </script>
-  </body>
+</body>
+
 </html>
