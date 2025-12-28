@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ADABRA • Play</title>
+    <style>
+      body { font-family: system-ui, -apple-system, Arial; padding: 24px; }
+      .card { border: 1px solid #ddd; border-radius: 10px; padding: 16px; max-width: 520px; }
+      .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 12px 0; }
+      input { padding: 12px; font-size: 18px; width: 180px; text-transform: uppercase; }
+      button { padding: 12px 16px; font-size: 18px; cursor: pointer; }
+      #buzz { width: 100%; font-size: 34px; padding: 22px; }
+      .muted { color: #666; }
+      .ok { color: #0a7; }
+      .err { color: #c00; }
+    </style>
+  </head>
+  <body>
+    <h1>ADABRA • Player</h1>
+
+    <div class="card">
+      <div class="row">
+        <input id="roomCode" placeholder="ROOM" maxlength="6" />
+        <button id="join">Join</button>
+      </div>
+
+      <div class="row">
+        <div class="muted">Current room:</div>
+        <div id="currentRoom" class="muted">none</div>
+      </div>
+
+      <p id="msg" class="muted">Join a room to enable BUZZ.</p>
+
+      <button id="buzz" disabled>BUZZ</button>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      const socket = io();
+
+      const roomInput = document.getElementById("roomCode");
+      const joinBtn = document.getElementById("join");
+      const currentRoomEl = document.getElementById("currentRoom");
+      const msgEl = document.getElementById("msg");
+      const buzzBtn = document.getElementById("buzz");
+
+      function setMsg(text, cls = "muted") {
+        msgEl.className = cls;
+        msgEl.textContent = text;
+      }
+
+      function getQueryRoom() {
+        const params = new URLSearchParams(location.search);
+        const r = params.get("room");
+        return r ? r.trim().toUpperCase() : "";
+      }
+
+      function joinRoom(code) {
+        const roomCode = String(code || "").trim().toUpperCase();
+        if (!roomCode) return setMsg("Enter a room code.", "err");
+        socket.emit("joinRoom", { roomCode });
+      }
+
+      // Auto-fill room from link: /play?room=ABCD
+      const queryRoom = getQueryRoom();
+      if (queryRoom) {
+        roomInput.value = queryRoom;
+        joinRoom(queryRoom);
+      }
+
+      joinBtn.onclick = () => joinRoom(roomInput.value);
+
+      buzzBtn.onclick = () => socket.emit("buzz");
+
+      socket.on("joinedRoom", ({ roomCode }) => {
+        currentRoomEl.textContent = roomCode;
+        currentRoomEl.className = "ok";
+        buzzBtn.disabled = false;
+        setMsg(`Joined room ${roomCode}.`, "ok");
+      });
+
+      socket.on("buzzed", ({ by, roomCode }) => {
+        // Players will later see lockout states; for now just show last buzz
+        if (currentRoomEl.textContent === roomCode) {
+          setMsg(`Buzz in ${roomCode} by ${by}`, "ok");
+        }
+      });
+
+      socket.on("errorMsg", (text) => setMsg(text, "err"));
+    </script>
+  </body>
+</html>
