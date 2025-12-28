@@ -1,134 +1,220 @@
 <!DOCTYPE html>
 <html>
-  <head>
+
+<head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ADABRA • Host</title>
     <style>
-      body { font-family: system-ui, -apple-system, Arial; padding: 24px; }
-      .card { border: 1px solid #ddd; border-radius: 10px; padding: 16px; max-width: 720px; }
-      .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 12px 0; }
-      button { padding: 10px 14px; font-size: 16px; cursor: pointer; }
-      .code { font-size: 28px; letter-spacing: 3px; font-weight: 700; }
-      .muted { color: #666; }
-      .ok { color: #0a7; }
-      .err { color: #c00; }
-      input { padding: 10px; font-size: 16px; width: 340px; }
-      a { color: inherit; }
+        body {
+            font-family: system-ui, -apple-system, Arial;
+            padding: 24px;
+        }
+
+        .card {
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            padding: 16px;
+            max-width: 780px;
+        }
+
+        .row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+            margin: 12px 0;
+        }
+
+        button {
+            padding: 10px 14px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .code {
+            font-size: 28px;
+            letter-spacing: 3px;
+            font-weight: 700;
+        }
+
+        .muted {
+            color: #666;
+        }
+
+        .ok {
+            color: #0a7;
+        }
+
+        .err {
+            color: #c00;
+        }
+
+        input {
+            padding: 10px;
+            font-size: 16px;
+            width: 420px;
+        }
+
+        .pill {
+            display: inline-block;
+            padding: 6px 10px;
+            border: 1px solid #ddd;
+            border-radius: 999px;
+        }
     </style>
-  </head>
-  <body>
+</head>
+
+<body>
     <h1>ADABRA • Host</h1>
 
     <div class="card">
-      <div class="row">
-        <button id="create">Create New Room</button>
-        <span id="status" class="muted">Create a room to begin.</span>
-      </div>
-
-      <div class="row">
-        <div>
-          <div class="muted">Room code</div>
-          <div id="roomCode" class="code muted">—</div>
+        <div class="row">
+            <button id="create">Create New Room</button>
+            <span id="status" class="muted">Create a room to begin.</span>
         </div>
-      </div>
 
-      <div class="row">
-        <div style="flex: 1;">
-          <div class="muted">Player link (open on phones)</div>
-          <input id="playerLink" readonly value="" />
+        <div class="row">
+            <div>
+                <div class="muted">Room code</div>
+                <div id="roomCode" class="code muted">—</div>
+            </div>
+            <div class="pill">
+                Phase: <strong id="phase" class="muted">—</strong>
+            </div>
+            <div class="pill">
+                Members: <strong id="members" class="muted">0</strong>
+            </div>
         </div>
-        <button id="copy">Copy Link</button>
-      </div>
 
-      <div class="row">
-        <div class="muted">Members:</div>
-        <div id="members" class="muted">0</div>
-      </div>
+        <div class="row">
+            <div style="flex: 1;">
+                <div class="muted">Player link</div>
+                <input id="playerLink" readonly value="" />
+            </div>
+            <button id="copy">Copy Link</button>
+        </div>
 
-      <hr />
+        <hr />
 
-      <div class="row">
-        <button id="buzzTest" disabled>Test Buzz Broadcast</button>
-        <span id="lastBuzz" class="muted">No buzz yet.</span>
-      </div>
+        <div class="row">
+            <button id="arm" disabled>Arm (Beep)</button>
+            <button id="incorrect" disabled>Incorrect (Release)</button>
+            <button id="correct" disabled>Correct (End Round)</button>
+        </div>
 
-      <p class="muted">
-        Next steps: we will add lockout + host controls (arm buzzer, timer, correct/incorrect).
-      </p>
+        <div class="row">
+            <span class="muted">Locked by:</span>
+            <strong id="lockedBy" class="muted">—</strong>
+        </div>
+
+        <div class="row">
+            <span id="lastBuzz" class="muted">No buzz yet.</span>
+        </div>
+
+        <p class="muted">
+            Today: host arms buzzer, players can buzz only when armed, first buzz locks the round.
+        </p>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
-      const socket = io();
+        const socket = io();
 
-      const createBtn = document.getElementById("create");
-      const statusEl = document.getElementById("status");
-      const roomCodeEl = document.getElementById("roomCode");
-      const playerLinkEl = document.getElementById("playerLink");
-      const copyBtn = document.getElementById("copy");
-      const membersEl = document.getElementById("members");
-      const buzzTestBtn = document.getElementById("buzzTest");
-      const lastBuzzEl = document.getElementById("lastBuzz");
+        const createBtn = document.getElementById("create");
+        const statusEl = document.getElementById("status");
+        const roomCodeEl = document.getElementById("roomCode");
+        const playerLinkEl = document.getElementById("playerLink");
+        const copyBtn = document.getElementById("copy");
 
-      let currentRoom = null;
+        const phaseEl = document.getElementById("phase");
+        const membersEl = document.getElementById("members");
+        const lockedByEl = document.getElementById("lockedBy");
+        const lastBuzzEl = document.getElementById("lastBuzz");
 
-      function setStatus(text, cls = "muted") {
-        statusEl.className = cls;
-        statusEl.textContent = text;
-      }
+        const armBtn = document.getElementById("arm");
+        const incorrectBtn = document.getElementById("incorrect");
+        const correctBtn = document.getElementById("correct");
 
-      createBtn.onclick = async () => {
-        setStatus("Creating room...", "muted");
-        try {
-          const res = await fetch("/api/rooms/create");
-          const data = await res.json();
-          currentRoom = data.roomCode;
+        let currentRoom = null;
+        let hostKey = null;
 
-          roomCodeEl.textContent = currentRoom;
-          roomCodeEl.className = "code ok";
-
-          const link = `${location.origin}/play?room=${encodeURIComponent(currentRoom)}`;
-          playerLinkEl.value = link;
-
-          socket.emit("joinRoom", { roomCode: currentRoom });
-
-          buzzTestBtn.disabled = false;
-          setStatus(`Room created: ${currentRoom}`, "ok");
-        } catch (e) {
-          setStatus("Failed to create room.", "err");
+        function setStatus(text, cls = "muted") {
+            statusEl.className = cls;
+            statusEl.textContent = text;
         }
-      };
 
-      copyBtn.onclick = async () => {
-        try {
-          await navigator.clipboard.writeText(playerLinkEl.value);
-          setStatus("Player link copied.", "ok");
-          setTimeout(() => setStatus("Ready.", "muted"), 900);
-        } catch {
-          setStatus("Copy failed. Select and copy manually.", "err");
+        function setControlsEnabled(enabled) {
+            armBtn.disabled = !enabled;
+            incorrectBtn.disabled = !enabled;
+            correctBtn.disabled = !enabled;
         }
-      };
 
-      buzzTestBtn.onclick = () => {
-        socket.emit("buzz");
-      };
+        createBtn.onclick = async () => {
+            setStatus("Creating room...", "muted");
+            try {
+                const res = await fetch("/api/rooms/create");
+                const data = await res.json();
+                currentRoom = data.roomCode;
+                hostKey = data.hostKey;
 
-      socket.on("roomInfo", ({ roomCode, membersCount }) => {
-        if (roomCode === currentRoom) {
-          membersEl.textContent = String(membersCount);
-        }
-      });
+                roomCodeEl.textContent = currentRoom;
+                roomCodeEl.className = "code ok";
 
-      socket.on("buzzed", ({ by, roomCode }) => {
-        if (roomCode === currentRoom) {
-          lastBuzzEl.textContent = `Buzz in ${roomCode} by ${by}`;
-          lastBuzzEl.className = "ok";
-        }
-      });
+                const link = `${location.origin}/play?room=${encodeURIComponent(currentRoom)}`;
+                playerLinkEl.value = link;
 
-      socket.on("errorMsg", (text) => setStatus(text, "err"));
-      socket.on("joinedRoom", () => setStatus("Host joined the room.", "ok"));
+                socket.emit("joinRoom", { roomCode: currentRoom, hostKey });
+                setControlsEnabled(true);
+
+                setStatus(`Room created: ${currentRoom}`, "ok");
+            } catch {
+                setStatus("Failed to create room.", "err");
+            }
+        };
+
+        copyBtn.onclick = async () => {
+            try {
+                await navigator.clipboard.writeText(playerLinkEl.value);
+                setStatus("Player link copied.", "ok");
+                setTimeout(() => setStatus("Ready.", "muted"), 900);
+            } catch {
+                setStatus("Copy failed. Copy manually.", "err");
+            }
+        };
+
+        armBtn.onclick = () => socket.emit("hostArm");
+        incorrectBtn.onclick = () => socket.emit("hostIncorrect");
+        correctBtn.onclick = () => socket.emit("hostCorrect");
+
+        socket.on("joinedRoom", ({ roomCode, isHost }) => {
+            if (!isHost) {
+                setStatus("Joined room, but not recognized as host.", "err");
+                return;
+            }
+            setStatus(`Host joined room ${roomCode}.`, "ok");
+        });
+
+        socket.on("roomState", (state) => {
+            if (!currentRoom || state.roomCode !== currentRoom) return;
+
+            phaseEl.textContent = state.phase;
+            phaseEl.className = state.phase === "armed" ? "ok" : "muted";
+
+            membersEl.textContent = String(state.membersCount);
+
+            lockedByEl.textContent = state.lockedBy ? state.lockedBy : "—";
+            lockedByEl.className = state.lockedBy ? "ok" : "muted";
+        });
+
+        socket.on("buzzed", ({ by, roomCode }) => {
+            if (roomCode !== currentRoom) return;
+            lastBuzzEl.textContent = `Buzz by ${by}`;
+            lastBuzzEl.className = "ok";
+        });
+
+        socket.on("errorMsg", (text) => setStatus(text, "err"));
     </script>
-  </body>
+</body>
+
 </html>
