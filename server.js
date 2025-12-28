@@ -512,6 +512,40 @@ io.on("connection", (socket) => {
       emitRoomState(roomCode);
     }
   });
+
+  // Host: replace question set via textarea
+  socket.on("hostSetQuestions", ({ rawText } = {}) => {
+    const room = requireRoom(socket);
+    if (!room) return;
+    if (!isHost(socket, room)) return socket.emit("errorMsg", "Host only.");
+
+    const questions = parseQuestions(rawText);
+
+    if (questions.length === 0) {
+      return socket.emit("errorMsg", "No valid questions found. Use format: points|question text");
+    }
+
+    room.questions = questions;
+    room.currentQuestionIndex = -1; // not started
+    resetRound(room);
+
+    socket.emit("hostInfoMsg", `Loaded ${questions.length} questions.`);
+    emitRoomState(room.roomCode);
+  });
+
+  // Host: clear questions (optional)
+  socket.on("hostClearQuestions", () => {
+    const room = requireRoom(socket);
+    if (!room) return;
+    if (!isHost(socket, room)) return socket.emit("errorMsg", "Host only.");
+
+    room.questions = [];
+    room.currentQuestionIndex = -1;
+    resetRound(room);
+
+    socket.emit("hostInfoMsg", "Questions cleared.");
+    emitRoomState(room.roomCode);
+  });
 });
 
 server.listen(3000, () => console.log("Server running on http://localhost:3000"));
