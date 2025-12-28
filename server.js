@@ -41,6 +41,16 @@ function makeTeams(initialCount) {
   return teams;
 }
 
+function defaultQuestions() {
+  return [
+    { text: "What is the capital of Azerbaijan?", points: 1 },
+    { text: "What is 2 + 2 * 2?", points: 1 },
+    { text: "Name one programming language that runs in the browser.", points: 1 },
+    { text: "What is the derivative of x^2?", points: 1 },
+    { text: "In Git, what command creates a commit?", points: 1 }
+  ];
+}
+
 function createRoom() {
   const roomCode = createUniqueRoomCode();
   const hostKey = randomString(20);
@@ -64,16 +74,19 @@ function createRoom() {
     timerRunning: false,
     timerLastTickAt: null,
 
-    // teams (dynamic)
-    teams: makeTeams(2), // start with 2 teams
+    // teams
+    teams: makeTeams(2),
     maxTeams: 6,
 
     // per-round lockout
     lockedOutTeams: new Set(),
 
-    // permanent team assignment per room (survives refresh)
-    // playerId -> teamId
-    playerTeams: new Map()
+    // persistent team assignment per room
+    playerTeams: new Map(), // playerId -> teamId
+
+    // questions
+    questions: defaultQuestions(),
+    currentQuestionIndex: -1 // -1 = not started yet
   });
 
   return { roomCode, hostKey };
@@ -84,7 +97,6 @@ function publicRoomState(room) {
     roomCode: room.roomCode,
     membersCount: room.membersCount,
     phase: room.phase,
-    armedAt: room.armedAt,
 
     durationMs: room.durationMs,
     remainingMs: room.remainingMs,
@@ -94,14 +106,39 @@ function publicRoomState(room) {
     lockedByTeamId: room.lockedByTeamId,
 
     teams: Object.values(room.teams).map((t) => ({ id: t.id, name: t.name, score: t.score })),
-    lockedOutTeams: Array.from(room.lockedOutTeams)
+    lockedOutTeams: Array.from(room.lockedOutTeams),
+
+    // question info (safe to show to players too: only index + points, not full text if you want)
+    currentQuestionIndex: room.currentQuestionIndex,
+    currentQuestionPoints:
+      room.currentQuestionIndex >= 0 && room.questions[room.currentQuestionIndex]
+        ? room.questions[room.currentQuestionIndex].points
+        : null
+  };
+}
+
+function hostRoomState(room) {
+  const q =
+    room.currentQuestionIndex >= 0 && room.questions[room.currentQuestionIndex]
+      ? room.questions[room.currentQuestionIndex]
+      : null;
+
+  return {
+    ...publicRoomState(room),
+    currentQuestionText: q ? q.text : null,
+    totalQuestions: room.questions.length
   };
 }
 
 function emitRoomState(roomCode) {
   const room = rooms.get(roomCode);
   if (!room) return;
+
+  // everyone gets public state
   io.to(roomCode).emit("roomState", publicRoomState(room));
+
+  // host gets extra info (question text)
+  io.to(`${roomCode}:host`).emit("hostState", hostRoomState(room));
 }
 
 function requireRoom(socket) {
@@ -178,25 +215,23 @@ io.on("connection", (socket) => {
     const room = rooms.get(code);
     if (!room) return socket.emit("errorMsg", `Room "${code}" does not exist.`);
 
-    // Leave previous room (1 room per socket)
     for (const r of socket.rooms) if (r !== socket.id) socket.leave(r);
 
     socket.join(code);
     socket.data.roomCode = code;
 
-    // host auth
     socket.data.isHost = Boolean(hostKey && hostKey === room.hostKey);
 
-    // player identity (for refresh persistence)
-    if (playerId && typeof playerId === "string") {
-      socket.data.playerId = playerId;
-    }
+    if (playerId && typeof playerId === "string") socket.data.playerId = playerId;
+
+    // Host joins an extra private room for host-only updates
+    if (socket.data.isHost) socket.join(`${code}:host`);
 
     room.membersCount += 1;
 
     socket.emit("joinedRoom", { roomCode: code, isHost: socket.data.isHost });
 
-    // If this is a player reconnect, re-send their existing team (if any)
+    // refresh persistence: re-apply team if known
     if (!socket.data.isHost && socket.data.playerId) {
       const existingTeam = room.playerTeams.get(socket.data.playerId);
       if (existingTeam) {
@@ -208,10 +243,7 @@ io.on("connection", (socket) => {
     emitRoomState(code);
   });
 
-  /**
-   * Host can INCREASE teams (up to 6).
-   * This does NOT reset scores.
-   */
+  // Host increase team count (2..6)
   socket.on("hostSetTeamCount", ({ count } = {}) => {
     const room = requireRoom(socket);
     if (!room) return;
@@ -223,12 +255,9 @@ io.on("connection", (socket) => {
     }
 
     const currentCount = Object.keys(room.teams).length;
-    if (desired < currentCount) {
-      return socket.emit("errorMsg", "You can only increase team count (not decrease) for now.");
-    }
+    if (desired < currentCount) return socket.emit("errorMsg", "You can only increase team count for now.");
     if (desired === currentCount) return;
 
-    // Add new teams
     for (let i = currentCount + 1; i <= desired; i++) {
       const id = String(i);
       room.teams[id] = { id, name: `Team ${i}`, score: 0 };
@@ -237,23 +266,16 @@ io.on("connection", (socket) => {
     emitRoomState(room.roomCode);
   });
 
-  /**
-   * Player chooses team ONCE.
-   * If already assigned (server-side), reject changes.
-   */
+  // Player chooses team ONCE (server authoritative)
   socket.on("setTeam", ({ teamId } = {}) => {
     const room = requireRoom(socket);
     if (!room) return;
 
     if (socket.data.isHost) return socket.emit("errorMsg", "Host cannot select a team.");
-
-    if (!socket.data.playerId) {
-      return socket.emit("errorMsg", "Missing playerId. Refresh /play page.");
-    }
+    if (!socket.data.playerId) return socket.emit("errorMsg", "Missing playerId. Refresh /play page.");
 
     const existing = room.playerTeams.get(socket.data.playerId);
     if (existing) {
-      // already locked forever for this room
       socket.data.teamId = existing;
       socket.emit("teamSet", { teamId: existing, locked: true });
       return;
@@ -262,7 +284,6 @@ io.on("connection", (socket) => {
     const t = String(teamId || "").trim();
     if (!room.teams[t]) return socket.emit("errorMsg", "Invalid team.");
 
-    // assign permanently
     room.playerTeams.set(socket.data.playerId, t);
     socket.data.teamId = t;
 
@@ -287,7 +308,45 @@ io.on("connection", (socket) => {
     emitRoomState(room.roomCode);
   });
 
-  // Host: arm (beep) resets per-round lockouts
+  // Host: Next Question (starts/advances game)
+  socket.on("hostNextQuestion", () => {
+    const room = requireRoom(socket);
+    if (!room) return;
+    if (!isHost(socket, room)) return socket.emit("errorMsg", "Host only.");
+
+    if (room.currentQuestionIndex < room.questions.length - 1) {
+      room.currentQuestionIndex += 1;
+    } else {
+      // loop back to start for now (simple)
+      room.currentQuestionIndex = 0;
+    }
+
+    // reset round each question
+    resetRound(room);
+
+    emitRoomState(room.roomCode);
+  });
+
+  // Host: Reset game (optional)
+  socket.on("hostResetGame", () => {
+    const room = requireRoom(socket);
+    if (!room) return;
+    if (!isHost(socket, room)) return socket.emit("errorMsg", "Host only.");
+
+    room.currentQuestionIndex = -1;
+
+    // reset scores
+    for (const t of Object.values(room.teams)) t.score = 0;
+
+    // keep team assignments (or clear if you want later)
+    // room.playerTeams.clear();
+
+    resetRound(room);
+
+    emitRoomState(room.roomCode);
+  });
+
+  // Host: Arm (beep)
   socket.on("hostArm", () => {
     const room = requireRoom(socket);
     if (!room) return;
@@ -312,11 +371,10 @@ io.on("connection", (socket) => {
     if (!room) return;
     if (!isHost(socket, room)) return socket.emit("errorMsg", "Host only.");
     if (room.phase !== "armed") return socket.emit("errorMsg", "Start timer only when ARMED.");
-
     if (room.remainingMs <= 0) room.remainingMs = room.durationMs;
+
     room.timerRunning = true;
     room.timerLastTickAt = Date.now();
-
     emitRoomState(room.roomCode);
   });
 
@@ -327,11 +385,10 @@ io.on("connection", (socket) => {
 
     room.timerRunning = false;
     room.timerLastTickAt = null;
-
     emitRoomState(room.roomCode);
   });
 
-  // Host: incorrect -> lock out buzzing team, unlock, resume timer
+  // Host incorrect -> lock out team
   socket.on("hostIncorrect", () => {
     const room = requireRoom(socket);
     if (!room) return;
@@ -352,22 +409,27 @@ io.on("connection", (socket) => {
     emitRoomState(room.roomCode);
   });
 
-  // Host: correct -> +1 to buzzing team, end round
+  // Host correct -> add points based on question points and end round
   socket.on("hostCorrect", () => {
     const room = requireRoom(socket);
     if (!room) return;
     if (!isHost(socket, room)) return socket.emit("errorMsg", "Host only.");
     if (room.phase !== "locked") return;
 
+    const q =
+      room.currentQuestionIndex >= 0 && room.questions[room.currentQuestionIndex]
+        ? room.questions[room.currentQuestionIndex]
+        : null;
+    const pts = q ? Number(q.points) || 1 : 1;
+
     if (room.lockedByTeamId && room.teams[room.lockedByTeamId]) {
-      room.teams[room.lockedByTeamId].score += 1;
+      room.teams[room.lockedByTeamId].score += pts;
     }
 
     resetRound(room);
     emitRoomState(room.roomCode);
   });
 
-  // Host manual score adjust
   socket.on("hostAdjustScore", ({ teamId, delta }) => {
     const room = requireRoom(socket);
     if (!room) return;
@@ -375,8 +437,7 @@ io.on("connection", (socket) => {
 
     const t = String(teamId || "").trim();
     const d = Number(delta);
-
-    if (!room.teams[t] || !Number.isInteger(d) || Math.abs(d) > 10) {
+    if (!room.teams[t] || !Number.isInteger(d) || Math.abs(d) > 100) {
       return socket.emit("errorMsg", "Invalid score adjustment.");
     }
 
@@ -396,10 +457,7 @@ io.on("connection", (socket) => {
       return socket.emit("buzzRejected", { reason: room.phase === "lobby" ? "NOT_ARMED" : "LOCKED" });
     }
     if (room.remainingMs <= 0) return socket.emit("buzzRejected", { reason: "TIME_UP" });
-
-    if (room.lockedOutTeams.has(teamId)) {
-      return socket.emit("buzzRejected", { reason: "TEAM_LOCKED_OUT" });
-    }
+    if (room.lockedOutTeams.has(teamId)) return socket.emit("buzzRejected", { reason: "TEAM_LOCKED_OUT" });
 
     room.phase = "locked";
     room.lockedBySocketId = socket.id;
