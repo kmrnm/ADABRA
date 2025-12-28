@@ -1,192 +1,298 @@
 <!DOCTYPE html>
 <html>
-  <head>
+
+<head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ADABRA • Host</title>
     <style>
-      body { font-family: system-ui, -apple-system, Arial; padding: 24px; }
-      .card { border: 1px solid #ddd; border-radius: 10px; padding: 16px; max-width: 1100px; }
-      .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 12px 0; }
-      button { padding: 10px 14px; font-size: 16px; cursor: pointer; }
-      .code { font-size: 28px; letter-spacing: 3px; font-weight: 700; }
-      .muted { color: #666; }
-      .ok { color: #0a7; }
-      .err { color: #c00; }
-      input, select { padding: 10px; font-size: 16px; }
-      .pill { display: inline-block; padding: 6px 10px; border: 1px solid #ddd; border-radius: 999px; }
-      #time { font-variant-numeric: tabular-nums; font-size: 20px; }
-      .grid { display: grid; grid-template-columns: repeat(3, minmax(220px, 1fr)); gap: 12px; }
-      .teamCard { border: 1px solid #eee; border-radius: 10px; padding: 12px; }
-      .teamTitle { font-weight: 700; font-size: 18px; }
-      .score { font-size: 30px; font-variant-numeric: tabular-nums; }
-      .lockout { font-size: 13px; }
+        body {
+            font-family: system-ui, -apple-system, Arial;
+            padding: 24px;
+        }
 
-      .qBox { border: 1px solid #eee; border-radius: 10px; padding: 12px; background: #fafafa; }
-      .qTitle { font-weight: 800; font-size: 18px; margin-bottom: 6px; }
-      .qText { font-size: 16px; line-height: 1.4; white-space: pre-wrap; }
+        .card {
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            padding: 16px;
+            max-width: 1100px;
+        }
+
+        .row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+            margin: 12px 0;
+        }
+
+        button {
+            padding: 10px 14px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .code {
+            font-size: 28px;
+            letter-spacing: 3px;
+            font-weight: 700;
+        }
+
+        .muted {
+            color: #666;
+        }
+
+        .ok {
+            color: #0a7;
+        }
+
+        .err {
+            color: #c00;
+        }
+
+        input,
+        select {
+            padding: 10px;
+            font-size: 16px;
+        }
+
+        .pill {
+            display: inline-block;
+            padding: 6px 10px;
+            border: 1px solid #ddd;
+            border-radius: 999px;
+        }
+
+        #time {
+            font-variant-numeric: tabular-nums;
+            font-size: 20px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(220px, 1fr));
+            gap: 12px;
+        }
+
+        .teamCard {
+            border: 1px solid #eee;
+            border-radius: 10px;
+            padding: 12px;
+        }
+
+        .teamTitle {
+            font-weight: 700;
+            font-size: 18px;
+        }
+
+        .score {
+            font-size: 30px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .lockout {
+            font-size: 13px;
+        }
+
+        .qBox {
+            border: 1px solid #eee;
+            border-radius: 10px;
+            padding: 12px;
+            background: #fafafa;
+        }
+
+        .qTitle {
+            font-weight: 800;
+            font-size: 18px;
+            margin-bottom: 6px;
+        }
+
+        .qText {
+            font-size: 16px;
+            line-height: 1.4;
+            white-space: pre-wrap;
+        }
     </style>
-  </head>
-  <body>
+</head>
+
+<body>
     <h1>ADABRA • Host</h1>
 
     <div class="card">
-      <div class="row">
-        <button id="create">Create New Room</button>
-        <span id="status" class="muted">Create a room to begin.</span>
-      </div>
-
-      <div class="row">
-        <div>
-          <div class="muted">Room code</div>
-          <div id="roomCode" class="code muted">—</div>
+        <div class="row">
+            <button id="create">Create New Room</button>
+            <span id="status" class="muted">Create a room to begin.</span>
         </div>
-        <div class="pill">Phase: <strong id="phase" class="muted">—</strong></div>
-        <div class="pill">Members: <strong id="members" class="muted">0</strong></div>
-        <div class="pill">Time: <strong id="time" class="muted">00:00.0</strong></div>
-        <div class="pill">Running: <strong id="running" class="muted">no</strong></div>
-      </div>
 
-      <div class="row">
-        <div style="flex: 1;">
-          <div class="muted">Player link</div>
-          <input id="playerLink" readonly style="width: 560px;" />
+        <div class="row">
+            <div>
+                <div class="muted">Room code</div>
+                <div id="roomCode" class="code muted">—</div>
+            </div>
+            <div class="pill">Phase: <strong id="phase" class="muted">—</strong></div>
+            <div class="pill">Members: <strong id="members" class="muted">0</strong></div>
+            <div class="pill">Time: <strong id="time" class="muted">00:00.0</strong></div>
+            <div class="pill">Running: <strong id="running" class="muted">no</strong></div>
         </div>
-        <button id="copy">Copy Link</button>
-      </div>
 
-      <hr />
+        <div class="row">
+            <div style="flex: 1;">
+                <div class="muted">Player link</div>
+                <input id="playerLink" readonly style="width: 560px;" />
+            </div>
+            <button id="copy">Copy Link</button>
+        </div>
 
-      <div class="row">
-        <button id="nextQ" disabled>Next Question</button>
-        <button id="resetGame" disabled>Reset Game (scores + questions)</button>
-      </div>
+        <hr />
 
-      <div class="qBox">
-        <div class="qTitle" id="qTitle">Question: not started</div>
-        <div class="muted" id="qMeta">—</div>
-        <div class="qText" id="qText">Click “Next Question” to begin.</div>
-      </div>
+        <div class="row">
+            <button id="nextQ" disabled>Next Question</button>
+            <button id="resetGame" disabled>Reset Game (scores + questions)</button>
+        </div>
 
-      <hr />
+        <hr />
 
-      <div class="row">
-        <label class="muted">Teams</label>
-        <select id="teamCount">
-          <option value="2">2</option><option value="3">3</option><option value="4">4</option>
-          <option value="5">5</option><option value="6">6</option>
-        </select>
-        <button id="applyTeams" disabled>Increase teams</button>
-      </div>
+        <h2 style="margin: 0 0 8px 0;">Questions</h2>
 
-      <div class="row">
-        <label class="muted">Duration (sec)</label>
-        <input id="duration" type="number" min="1" max="600" step="1" value="15" style="width: 90px;" />
-        <button id="setDuration" disabled>Set</button>
-      </div>
+        <div class="row" style="align-items: stretch;">
+            <textarea id="questionsInput" rows="6" style="width: 100%; font-size: 14px; padding: 10px;"
+                placeholder="Paste questions here (one per line):&#10;points|question text&#10;&#10;Example:&#10;1|What is the capital of Azerbaijan?&#10;2|What is 2 + 2 * 2?"></textarea>
+        </div>
 
-      <div class="row">
-        <button id="arm" disabled>Arm (Beep)</button>
-        <button id="startTimer" disabled>Start/Resume Timer</button>
-        <button id="pauseTimer" disabled>Pause Timer</button>
-      </div>
+        <div class="row">
+            <button id="loadQuestions" disabled>Load Questions</button>
+            <button id="clearQuestions" disabled>Clear Questions</button>
+            <span class="muted">Format: points|question text (one per line)</span>
+        </div>
 
-      <div class="row">
-        <button id="incorrect" disabled>Incorrect (Lock out team)</button>
-        <button id="correct" disabled>Correct (Add points & end round)</button>
-      </div>
+        <div class="qBox">
+            <div class="qTitle" id="qTitle">Question: not started</div>
+            <div class="muted" id="qMeta">—</div>
+            <div class="qText" id="qText">Click “Next Question” to begin.</div>
+        </div>
 
-      <div class="row">
-        <span class="muted">Locked by:</span>
-        <strong id="lockedBy" class="muted">—</strong>
-        <span class="muted">Team:</span>
-        <strong id="lockedTeam" class="muted">—</strong>
-      </div>
+        <hr />
 
-      <div class="row">
-        <span id="lastBuzz" class="muted">No buzz yet.</span>
-      </div>
+        <div class="row">
+            <label class="muted">Teams</label>
+            <select id="teamCount">
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+                <option value="6">6</option>
+            </select>
+            <button id="applyTeams" disabled>Increase teams</button>
+        </div>
 
-      <hr />
+        <div class="row">
+            <label class="muted">Duration (sec)</label>
+            <input id="duration" type="number" min="1" max="600" step="1" value="15" style="width: 90px;" />
+            <button id="setDuration" disabled>Set</button>
+        </div>
 
-      <h2 style="margin: 0 0 8px 0;">Scoreboard</h2>
-      <div id="scoreboard" class="grid"></div>
+        <div class="row">
+            <button id="arm" disabled>Arm (Beep)</button>
+            <button id="startTimer" disabled>Start/Resume Timer</button>
+            <button id="pauseTimer" disabled>Pause Timer</button>
+        </div>
+
+        <div class="row">
+            <button id="incorrect" disabled>Incorrect (Lock out team)</button>
+            <button id="correct" disabled>Correct (Add points & end round)</button>
+        </div>
+
+        <div class="row">
+            <span class="muted">Locked by:</span>
+            <strong id="lockedBy" class="muted">—</strong>
+            <span class="muted">Team:</span>
+            <strong id="lockedTeam" class="muted">—</strong>
+        </div>
+
+        <div class="row">
+            <span id="lastBuzz" class="muted">No buzz yet.</span>
+        </div>
+
+        <hr />
+
+        <h2 style="margin: 0 0 8px 0;">Scoreboard</h2>
+        <div id="scoreboard" class="grid"></div>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
-      const socket = io();
+        const socket = io();
 
-      const createBtn = document.getElementById("create");
-      const statusEl = document.getElementById("status");
-      const roomCodeEl = document.getElementById("roomCode");
-      const playerLinkEl = document.getElementById("playerLink");
-      const copyBtn = document.getElementById("copy");
+        const createBtn = document.getElementById("create");
+        const statusEl = document.getElementById("status");
+        const roomCodeEl = document.getElementById("roomCode");
+        const playerLinkEl = document.getElementById("playerLink");
+        const copyBtn = document.getElementById("copy");
 
-      const nextQBtn = document.getElementById("nextQ");
-      const resetGameBtn = document.getElementById("resetGame");
-      const qTitleEl = document.getElementById("qTitle");
-      const qMetaEl = document.getElementById("qMeta");
-      const qTextEl = document.getElementById("qText");
+        const nextQBtn = document.getElementById("nextQ");
+        const resetGameBtn = document.getElementById("resetGame");
+        const qTitleEl = document.getElementById("qTitle");
+        const qMetaEl = document.getElementById("qMeta");
+        const qTextEl = document.getElementById("qText");
 
-      const phaseEl = document.getElementById("phase");
-      const membersEl = document.getElementById("members");
-      const timeEl = document.getElementById("time");
-      const runningEl = document.getElementById("running");
-      const lockedByEl = document.getElementById("lockedBy");
-      const lockedTeamEl = document.getElementById("lockedTeam");
-      const lastBuzzEl = document.getElementById("lastBuzz");
+        const phaseEl = document.getElementById("phase");
+        const membersEl = document.getElementById("members");
+        const timeEl = document.getElementById("time");
+        const runningEl = document.getElementById("running");
+        const lockedByEl = document.getElementById("lockedBy");
+        const lockedTeamEl = document.getElementById("lockedTeam");
+        const lastBuzzEl = document.getElementById("lastBuzz");
 
-      const teamCountSel = document.getElementById("teamCount");
-      const applyTeamsBtn = document.getElementById("applyTeams");
+        const teamCountSel = document.getElementById("teamCount");
+        const applyTeamsBtn = document.getElementById("applyTeams");
 
-      const durationInput = document.getElementById("duration");
-      const setDurationBtn = document.getElementById("setDuration");
+        const durationInput = document.getElementById("duration");
+        const setDurationBtn = document.getElementById("setDuration");
 
-      const armBtn = document.getElementById("arm");
-      const startTimerBtn = document.getElementById("startTimer");
-      const pauseTimerBtn = document.getElementById("pauseTimer");
-      const incorrectBtn = document.getElementById("incorrect");
-      const correctBtn = document.getElementById("correct");
+        const armBtn = document.getElementById("arm");
+        const startTimerBtn = document.getElementById("startTimer");
+        const pauseTimerBtn = document.getElementById("pauseTimer");
+        const incorrectBtn = document.getElementById("incorrect");
+        const correctBtn = document.getElementById("correct");
 
-      const scoreboardEl = document.getElementById("scoreboard");
+        const scoreboardEl = document.getElementById("scoreboard");
 
-      let currentRoom = null;
-      let hostKey = null;
+        let currentRoom = null;
+        let hostKey = null;
 
-      function setStatus(text, cls = "muted") {
-        statusEl.className = cls;
-        statusEl.textContent = text;
-      }
+        function setStatus(text, cls = "muted") {
+            statusEl.className = cls;
+            statusEl.textContent = text;
+        }
 
-      function enableControls(enabled) {
-        applyTeamsBtn.disabled = !enabled;
-        setDurationBtn.disabled = !enabled;
-        armBtn.disabled = !enabled;
-        startTimerBtn.disabled = !enabled;
-        pauseTimerBtn.disabled = !enabled;
-        incorrectBtn.disabled = !enabled;
-        correctBtn.disabled = !enabled;
-        nextQBtn.disabled = !enabled;
-        resetGameBtn.disabled = !enabled;
-      }
+        function enableControls(enabled) {
+            applyTeamsBtn.disabled = !enabled;
+            setDurationBtn.disabled = !enabled;
+            armBtn.disabled = !enabled;
+            startTimerBtn.disabled = !enabled;
+            pauseTimerBtn.disabled = !enabled;
+            incorrectBtn.disabled = !enabled;
+            correctBtn.disabled = !enabled;
+            nextQBtn.disabled = !enabled;
+            resetGameBtn.disabled = !enabled;
+        }
 
-      function formatMs(ms) {
-        const m = Math.floor(ms / 60000);
-        const s = Math.floor((ms % 60000) / 1000);
-        const t = Math.floor((ms % 1000) / 100);
-        return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}.${t}`;
-      }
+        function formatMs(ms) {
+            const m = Math.floor(ms / 60000);
+            const s = Math.floor((ms % 60000) / 1000);
+            const t = Math.floor((ms % 1000) / 100);
+            return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}.${t}`;
+        }
 
-      function renderScoreboard(teams, lockedOutTeams) {
-        const locked = new Set(lockedOutTeams || []);
-        scoreboardEl.innerHTML = "";
+        function renderScoreboard(teams, lockedOutTeams) {
+            const locked = new Set(lockedOutTeams || []);
+            scoreboardEl.innerHTML = "";
 
-        for (const t of teams) {
-          const card = document.createElement("div");
-          card.className = "teamCard";
+            for (const t of teams) {
+                const card = document.createElement("div");
+                card.className = "teamCard";
 
-          card.innerHTML = `
+                card.innerHTML = `
             <div class="teamTitle">${t.name} (ID ${t.id})</div>
             <div class="score">${t.score}</div>
             <div class="row">
@@ -200,108 +306,109 @@
             </div>
           `;
 
-          card.querySelectorAll("button").forEach((btn) => {
-            btn.onclick = () => {
-              socket.emit("hostAdjustScore", {
-                teamId: btn.dataset.team,
-                delta: Number(btn.dataset.delta)
-              });
-            };
-          });
+                card.querySelectorAll("button").forEach((btn) => {
+                    btn.onclick = () => {
+                        socket.emit("hostAdjustScore", {
+                            teamId: btn.dataset.team,
+                            delta: Number(btn.dataset.delta)
+                        });
+                    };
+                });
 
-          scoreboardEl.appendChild(card);
+                scoreboardEl.appendChild(card);
+            }
         }
-      }
 
-      createBtn.onclick = async () => {
-        setStatus("Creating room...", "muted");
-        try {
-          const res = await fetch("/api/rooms/create");
-          const data = await res.json();
-          currentRoom = data.roomCode;
-          hostKey = data.hostKey;
+        createBtn.onclick = async () => {
+            setStatus("Creating room...", "muted");
+            try {
+                const res = await fetch("/api/rooms/create");
+                const data = await res.json();
+                currentRoom = data.roomCode;
+                hostKey = data.hostKey;
 
-          roomCodeEl.textContent = currentRoom;
-          roomCodeEl.className = "code ok";
-          playerLinkEl.value = `${location.origin}/play?room=${encodeURIComponent(currentRoom)}`;
+                roomCodeEl.textContent = currentRoom;
+                roomCodeEl.className = "code ok";
+                playerLinkEl.value = `${location.origin}/play?room=${encodeURIComponent(currentRoom)}`;
 
-          socket.emit("joinRoom", { roomCode: currentRoom, hostKey });
-          enableControls(true);
+                socket.emit("joinRoom", { roomCode: currentRoom, hostKey });
+                enableControls(true);
 
-          setStatus(`Room created: ${currentRoom}`, "ok");
-        } catch {
-          setStatus("Failed to create room.", "err");
-        }
-      };
+                setStatus(`Room created: ${currentRoom}`, "ok");
+            } catch {
+                setStatus("Failed to create room.", "err");
+            }
+        };
 
-      copyBtn.onclick = async () => {
-        try {
-          await navigator.clipboard.writeText(playerLinkEl.value);
-          setStatus("Player link copied.", "ok");
-          setTimeout(() => setStatus("Ready.", "muted"), 900);
-        } catch {
-          setStatus("Copy failed. Copy manually.", "err");
-        }
-      };
+        copyBtn.onclick = async () => {
+            try {
+                await navigator.clipboard.writeText(playerLinkEl.value);
+                setStatus("Player link copied.", "ok");
+                setTimeout(() => setStatus("Ready.", "muted"), 900);
+            } catch {
+                setStatus("Copy failed. Copy manually.", "err");
+            }
+        };
 
-      nextQBtn.onclick = () => socket.emit("hostNextQuestion");
-      resetGameBtn.onclick = () => socket.emit("hostResetGame");
+        nextQBtn.onclick = () => socket.emit("hostNextQuestion");
+        resetGameBtn.onclick = () => socket.emit("hostResetGame");
 
-      applyTeamsBtn.onclick = () => socket.emit("hostSetTeamCount", { count: Number(teamCountSel.value) });
-      setDurationBtn.onclick = () => socket.emit("hostSetDuration", { seconds: Number(durationInput.value) });
+        applyTeamsBtn.onclick = () => socket.emit("hostSetTeamCount", { count: Number(teamCountSel.value) });
+        setDurationBtn.onclick = () => socket.emit("hostSetDuration", { seconds: Number(durationInput.value) });
 
-      armBtn.onclick = () => socket.emit("hostArm");
-      startTimerBtn.onclick = () => socket.emit("hostStartTimer");
-      pauseTimerBtn.onclick = () => socket.emit("hostPauseTimer");
-      incorrectBtn.onclick = () => socket.emit("hostIncorrect");
-      correctBtn.onclick = () => socket.emit("hostCorrect");
+        armBtn.onclick = () => socket.emit("hostArm");
+        startTimerBtn.onclick = () => socket.emit("hostStartTimer");
+        pauseTimerBtn.onclick = () => socket.emit("hostPauseTimer");
+        incorrectBtn.onclick = () => socket.emit("hostIncorrect");
+        correctBtn.onclick = () => socket.emit("hostCorrect");
 
-      socket.on("errorMsg", (text) => setStatus(text, "err"));
+        socket.on("errorMsg", (text) => setStatus(text, "err"));
 
-      // host-only state includes question text
-      socket.on("hostState", (state) => {
-        if (!currentRoom || state.roomCode !== currentRoom) return;
+        // host-only state includes question text
+        socket.on("hostState", (state) => {
+            if (!currentRoom || state.roomCode !== currentRoom) return;
 
-        const idx = state.currentQuestionIndex;
-        const total = state.totalQuestions;
+            const idx = state.currentQuestionIndex;
+            const total = state.totalQuestions;
 
-        if (idx === -1) {
-          qTitleEl.textContent = "Question: not started";
-          qMetaEl.textContent = "—";
-          qTextEl.textContent = "Click “Next Question” to begin.";
-        } else {
-          qTitleEl.textContent = `Question ${idx + 1} / ${total}`;
-          qMetaEl.textContent = `Points: ${state.currentQuestionPoints ?? 1}`;
-          qTextEl.textContent = state.currentQuestionText || "(no text)";
-        }
-      });
+            if (idx === -1) {
+                qTitleEl.textContent = "Question: not started";
+                qMetaEl.textContent = "—";
+                qTextEl.textContent = "Click “Next Question” to begin.";
+            } else {
+                qTitleEl.textContent = `Question ${idx + 1} / ${total}`;
+                qMetaEl.textContent = `Points: ${state.currentQuestionPoints ?? 1}`;
+                qTextEl.textContent = state.currentQuestionText || "(no text)";
+            }
+        });
 
-      socket.on("roomState", (state) => {
-        if (!currentRoom || state.roomCode !== currentRoom) return;
+        socket.on("roomState", (state) => {
+            if (!currentRoom || state.roomCode !== currentRoom) return;
 
-        phaseEl.textContent = state.phase;
-        phaseEl.className = state.phase === "armed" ? "ok" : "muted";
+            phaseEl.textContent = state.phase;
+            phaseEl.className = state.phase === "armed" ? "ok" : "muted";
 
-        membersEl.textContent = String(state.membersCount);
-        timeEl.textContent = formatMs(state.remainingMs);
+            membersEl.textContent = String(state.membersCount);
+            timeEl.textContent = formatMs(state.remainingMs);
 
-        runningEl.textContent = state.timerRunning ? "yes" : "no";
-        runningEl.className = state.timerRunning ? "ok" : "muted";
+            runningEl.textContent = state.timerRunning ? "yes" : "no";
+            runningEl.className = state.timerRunning ? "ok" : "muted";
 
-        lockedByEl.textContent = state.lockedBySocketId || "—";
-        lockedTeamEl.textContent = state.lockedByTeamId || "—";
+            lockedByEl.textContent = state.lockedBySocketId || "—";
+            lockedTeamEl.textContent = state.lockedByTeamId || "—";
 
-        durationInput.value = String(Math.round(state.durationMs / 1000));
-        teamCountSel.value = String(state.teams.length);
+            durationInput.value = String(Math.round(state.durationMs / 1000));
+            teamCountSel.value = String(state.teams.length);
 
-        renderScoreboard(state.teams, state.lockedOutTeams);
-      });
+            renderScoreboard(state.teams, state.lockedOutTeams);
+        });
 
-      socket.on("buzzed", ({ by, teamId, roomCode }) => {
-        if (roomCode !== currentRoom) return;
-        lastBuzzEl.textContent = `Buzz by ${by} (Team ${teamId})`;
-        lastBuzzEl.className = "ok";
-      });
+        socket.on("buzzed", ({ by, teamId, roomCode }) => {
+            if (roomCode !== currentRoom) return;
+            lastBuzzEl.textContent = `Buzz by ${by} (Team ${teamId})`;
+            lastBuzzEl.className = "ok";
+        });
     </script>
-  </body>
+</body>
+
 </html>
