@@ -337,16 +337,17 @@ io.on("connection", (socket) => {
     if (!room) return;
     if (!isHost(socket, room)) return socket.emit("errorMsg", "Host only.");
 
+    if (!room.questions || room.questions.length === 0) {
+      return socket.emit("errorMsg", "No questions loaded. Paste questions and click Load Questions.");
+    }
+
     if (room.currentQuestionIndex < room.questions.length - 1) {
       room.currentQuestionIndex += 1;
     } else {
-      // loop back to start for now (simple)
-      room.currentQuestionIndex = 0;
+      room.currentQuestionIndex = 0; // loop for now
     }
 
-    // reset round each question
     resetRound(room);
-
     emitRoomState(room.roomCode);
   });
 
