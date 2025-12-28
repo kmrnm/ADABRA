@@ -369,6 +369,14 @@
         incorrectBtn.onclick = () => socket.emit("hostIncorrect");
         correctBtn.onclick = () => socket.emit("hostCorrect");
 
+        loadQuestionsBtn.onclick = () => {
+            socket.emit("hostSetQuestions", { rawText: questionsInput.value });
+        };
+
+        clearQuestionsBtn.onclick = () => {
+            socket.emit("hostClearQuestions");
+        };
+
         socket.on("errorMsg", (text) => setStatus(text, "err"));
 
         // host-only state includes question text
