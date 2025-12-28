@@ -423,6 +423,8 @@
             lastBuzzEl.textContent = `Buzz by ${by} (Team ${teamId})`;
             lastBuzzEl.className = "ok";
         });
+
+        socket.on("hostInfoMsg", (text) => setStatus(text, "ok"));
     </script>
 </body>
 
