@@ -4,21 +4,108 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ADABRA</title>
+    <style>
+      body { font-family: system-ui, -apple-system, Arial; padding: 24px; }
+      .row { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; }
+      input { padding: 10px; font-size: 16px; width: 160px; text-transform: uppercase; }
+      button { padding: 10px 14px; font-size: 16px; cursor: pointer; }
+      #buzz { font-size: 22px; padding: 18px 24px; }
+      .card { border: 1px solid #ddd; border-radius: 10px; padding: 14px; max-width: 520px; }
+      .muted { color: #666; }
+      .ok { color: #0a7; }
+      .err { color: #c00; }
+      code { background: #f6f6f6; padding: 2px 6px; border-radius: 6px; }
+    </style>
   </head>
+
   <body>
     <h1>ADABRA</h1>
-    <button id="buzz">BUZZ</button>
+
+    <div class="card">
+      <div class="row">
+        <button id="createRoom">Create Room</button>
+        <span class="muted">Creates a new room code on the server.</span>
+      </div>
+
+      <div class="row">
+        <input id="roomCode" placeholder="ROOM CODE" maxlength="6" />
+        <button id="joinRoom">Join Room</button>
+      </div>
+
+      <p>
+        Current room:
+        <strong id="currentRoom" class="muted">none</strong>
+        <span id="members" class="muted"></span>
+      </p>
+
+      <p id="msg" class="muted"></p>
+
+      <div class="row">
+        <button id="buzz" disabled>BUZZ</button>
+      </div>
+    </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
       const socket = io();
 
-      document.getElementById("buzz").onclick = () => {
+      const createRoomBtn = document.getElementById("createRoom");
+      const joinRoomBtn = document.getElementById("joinRoom");
+      const roomCodeInput = document.getElementById("roomCode");
+      const currentRoomEl = document.getElementById("currentRoom");
+      const membersEl = document.getElementById("members");
+      const msgEl = document.getElementById("msg");
+      const buzzBtn = document.getElementById("buzz");
+
+      function setMsg(text, type = "muted") {
+        msgEl.className = type;
+        msgEl.textContent = text;
+      }
+
+      createRoomBtn.onclick = async () => {
+        setMsg("Creating room...", "muted");
+        try {
+          const res = await fetch("/api/rooms/create");
+          const data = await res.json();
+          roomCodeInput.value = data.roomCode;
+          setMsg(`Room created: ${data.roomCode}. Now click Join Room.`, "ok");
+        } catch (e) {
+          setMsg("Failed to create room.", "err");
+        }
+      };
+
+      joinRoomBtn.onclick = () => {
+        const roomCode = (roomCodeInput.value || "").trim().toUpperCase();
+        if (!roomCode) {
+          setMsg("Please enter a room code.", "err");
+          return;
+        }
+        socket.emit("joinRoom", { roomCode });
+      };
+
+      buzzBtn.onclick = () => {
         socket.emit("buzz");
       };
 
-      socket.on("buzzed", (id) => {
-        alert("Buzzed by " + id);
+      socket.on("joinedRoom", ({ roomCode }) => {
+        currentRoomEl.textContent = roomCode;
+        currentRoomEl.className = "ok";
+        buzzBtn.disabled = false;
+        setMsg(`Joined room ${roomCode}. Buzz is active.`, "ok");
+      });
+
+      socket.on("roomInfo", ({ roomCode, membersCount }) => {
+        if (currentRoomEl.textContent === roomCode) {
+          membersEl.textContent = ` • members: ${membersCount}`;
+        }
+      });
+
+      socket.on("buzzed", ({ by, roomCode }) => {
+        setMsg(`BUZZED in ${roomCode} by ${by}`, "ok");
+      });
+
+      socket.on("errorMsg", (text) => {
+        setMsg(text, "err");
       });
     </script>
   </body>
