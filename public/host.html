@@ -6,17 +6,17 @@
     <title>ADABRA • Host</title>
     <style>
       body { font-family: system-ui, -apple-system, Arial; padding: 24px; }
-      .card { border: 1px solid #ddd; border-radius: 10px; padding: 16px; max-width: 980px; }
+      .card { border: 1px solid #ddd; border-radius: 10px; padding: 16px; max-width: 1040px; }
       .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 12px 0; }
       button { padding: 10px 14px; font-size: 16px; cursor: pointer; }
       .code { font-size: 28px; letter-spacing: 3px; font-weight: 700; }
       .muted { color: #666; }
       .ok { color: #0a7; }
       .err { color: #c00; }
-      input { padding: 10px; font-size: 16px; }
+      input, select { padding: 10px; font-size: 16px; }
       .pill { display: inline-block; padding: 6px 10px; border: 1px solid #ddd; border-radius: 999px; }
       #time { font-variant-numeric: tabular-nums; font-size: 20px; }
-      .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+      .grid { display: grid; grid-template-columns: repeat(3, minmax(220px, 1fr)); gap: 12px; }
       .teamCard { border: 1px solid #eee; border-radius: 10px; padding: 12px; }
       .teamTitle { font-weight: 700; font-size: 18px; }
       .score { font-size: 30px; font-variant-numeric: tabular-nums; }
@@ -54,6 +54,19 @@
       <hr />
 
       <div class="row">
+        <label class="muted">Teams</label>
+        <select id="teamCount">
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+          <option value="5">5</option>
+          <option value="6">6</option>
+        </select>
+        <button id="applyTeams" disabled>Increase teams</button>
+        <span class="muted">Only increases; does not reset scores.</span>
+      </div>
+
+      <div class="row">
         <label class="muted">Duration (sec)</label>
         <input id="duration" type="number" min="1" max="600" step="1" value="15" style="width: 90px;" />
         <button id="setDuration" disabled>Set</button>
@@ -84,27 +97,7 @@
       <hr />
 
       <h2 style="margin: 0 0 8px 0;">Scoreboard</h2>
-      <div class="grid">
-        <div class="teamCard">
-          <div class="teamTitle" id="teamAName">Team A</div>
-          <div class="score" id="teamAScore">0</div>
-          <div class="row">
-            <button id="aPlus">+1</button>
-            <button id="aMinus">-1</button>
-          </div>
-          <div class="lockout muted" id="aLockout">Not locked out</div>
-        </div>
-
-        <div class="teamCard">
-          <div class="teamTitle" id="teamBName">Team B</div>
-          <div class="score" id="teamBScore">0</div>
-          <div class="row">
-            <button id="bPlus">+1</button>
-            <button id="bMinus">-1</button>
-          </div>
-          <div class="lockout muted" id="bLockout">Not locked out</div>
-        </div>
-      </div>
+      <div id="scoreboard" class="grid"></div>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
@@ -121,10 +114,12 @@
       const membersEl = document.getElementById("members");
       const timeEl = document.getElementById("time");
       const runningEl = document.getElementById("running");
-
       const lockedByEl = document.getElementById("lockedBy");
       const lockedTeamEl = document.getElementById("lockedTeam");
       const lastBuzzEl = document.getElementById("lastBuzz");
+
+      const teamCountSel = document.getElementById("teamCount");
+      const applyTeamsBtn = document.getElementById("applyTeams");
 
       const durationInput = document.getElementById("duration");
       const setDurationBtn = document.getElementById("setDuration");
@@ -135,10 +130,7 @@
       const incorrectBtn = document.getElementById("incorrect");
       const correctBtn = document.getElementById("correct");
 
-      const teamAScoreEl = document.getElementById("teamAScore");
-      const teamBScoreEl = document.getElementById("teamBScore");
-      const aLockoutEl = document.getElementById("aLockout");
-      const bLockoutEl = document.getElementById("bLockout");
+      const scoreboardEl = document.getElementById("scoreboard");
 
       let currentRoom = null;
       let hostKey = null;
@@ -149,12 +141,13 @@
       }
 
       function enableControls(enabled) {
+        applyTeamsBtn.disabled = !enabled;
+        setDurationBtn.disabled = !enabled;
         armBtn.disabled = !enabled;
         startTimerBtn.disabled = !enabled;
         pauseTimerBtn.disabled = !enabled;
         incorrectBtn.disabled = !enabled;
         correctBtn.disabled = !enabled;
-        setDurationBtn.disabled = !enabled;
       }
 
       function formatMs(ms) {
@@ -162,6 +155,39 @@
         const s = Math.floor((ms % 60000) / 1000);
         const t = Math.floor((ms % 1000) / 100);
         return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}.${t}`;
+      }
+
+      function renderScoreboard(teams, lockedOutTeams) {
+        const locked = new Set(lockedOutTeams || []);
+        scoreboardEl.innerHTML = "";
+
+        for (const t of teams) {
+          const card = document.createElement("div");
+          card.className = "teamCard";
+
+          card.innerHTML = `
+            <div class="teamTitle">${t.name} (ID ${t.id})</div>
+            <div class="score">${t.score}</div>
+            <div class="row">
+              <button data-team="${t.id}" data-delta="1">+1</button>
+              <button data-team="${t.id}" data-delta="-1">-1</button>
+            </div>
+            <div class="lockout ${locked.has(t.id) ? "err" : "muted"}">
+              ${locked.has(t.id) ? "LOCKED OUT this round" : "Not locked out"}
+            </div>
+          `;
+
+          card.querySelectorAll("button").forEach((btn) => {
+            btn.onclick = () => {
+              socket.emit("hostAdjustScore", {
+                teamId: btn.dataset.team,
+                delta: Number(btn.dataset.delta)
+              });
+            };
+          });
+
+          scoreboardEl.appendChild(card);
+        }
       }
 
       createBtn.onclick = async () => {
@@ -196,6 +222,7 @@
         }
       };
 
+      applyTeamsBtn.onclick = () => socket.emit("hostSetTeamCount", { count: Number(teamCountSel.value) });
       setDurationBtn.onclick = () => socket.emit("hostSetDuration", { seconds: Number(durationInput.value) });
 
       armBtn.onclick = () => socket.emit("hostArm");
@@ -204,15 +231,7 @@
       incorrectBtn.onclick = () => socket.emit("hostIncorrect");
       correctBtn.onclick = () => socket.emit("hostCorrect");
 
-      document.getElementById("aPlus").onclick = () => socket.emit("hostAdjustScore", { teamId: "A", delta: 1 });
-      document.getElementById("aMinus").onclick = () => socket.emit("hostAdjustScore", { teamId: "A", delta: -1 });
-      document.getElementById("bPlus").onclick = () => socket.emit("hostAdjustScore", { teamId: "B", delta: 1 });
-      document.getElementById("bMinus").onclick = () => socket.emit("hostAdjustScore", { teamId: "B", delta: -1 });
-
-      socket.on("joinedRoom", ({ isHost }) => {
-        if (!isHost) setStatus("Joined room, but not recognized as host.", "err");
-        else setStatus("Host joined room.", "ok");
-      });
+      socket.on("errorMsg", (text) => setStatus(text, "err"));
 
       socket.on("roomState", (state) => {
         if (!currentRoom || state.roomCode !== currentRoom) return;
@@ -227,21 +246,14 @@
         runningEl.className = state.timerRunning ? "ok" : "muted";
 
         lockedByEl.textContent = state.lockedBySocketId || "—";
-        lockedByEl.className = state.lockedBySocketId ? "ok" : "muted";
-
-        lockedTeamEl.textContent = state.lockedByTeam || "—";
-        lockedTeamEl.className = state.lockedByTeam ? "ok" : "muted";
+        lockedTeamEl.textContent = state.lockedByTeamId || "—";
 
         durationInput.value = String(Math.round(state.durationMs / 1000));
 
-        teamAScoreEl.textContent = String(state.teams.A.score);
-        teamBScoreEl.textContent = String(state.teams.B.score);
+        // keep dropdown aligned with current number of teams
+        teamCountSel.value = String(state.teams.length);
 
-        const lockedOut = new Set(state.lockedOutTeams || []);
-        aLockoutEl.textContent = lockedOut.has("A") ? "LOCKED OUT this round" : "Not locked out";
-        aLockoutEl.className = lockedOut.has("A") ? "lockout err" : "lockout muted";
-        bLockoutEl.textContent = lockedOut.has("B") ? "LOCKED OUT this round" : "Not locked out";
-        bLockoutEl.className = lockedOut.has("B") ? "lockout err" : "lockout muted";
+        renderScoreboard(state.teams, state.lockedOutTeams);
       });
 
       socket.on("buzzed", ({ by, teamId, roomCode }) => {
@@ -249,8 +261,6 @@
         lastBuzzEl.textContent = `Buzz by ${by} (Team ${teamId})`;
         lastBuzzEl.className = "ok";
       });
-
-      socket.on("errorMsg", (text) => setStatus(text, "err"));
     </script>
   </body>
 </html>
