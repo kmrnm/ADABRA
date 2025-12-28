@@ -1,5 +1,6 @@
 const express = require("express");
 const http = require("http");
+const path = require("path");
 const { Server } = require("socket.io");
 
 const app = express();
@@ -8,15 +9,13 @@ const io = new Server(server);
 
 app.use(express.static("public"));
 
-// In-memory room store (simple for now)
+// In-memory room store
 const rooms = new Map(); // roomCode -> { createdAt, membersCount }
 
 function generateRoomCode(length = 4) {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I to avoid confusion
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I
   let code = "";
-  for (let i = 0; i < length; i++) {
-    code += chars[Math.floor(Math.random() * chars.length)];
-  }
+  for (let i = 0; i < length; i++) code += chars[Math.floor(Math.random() * chars.length)];
   return code;
 }
 
@@ -29,7 +28,12 @@ function createUniqueRoomCode() {
   return code;
 }
 
-// REST endpoint to create a room code (host-like behavior)
+// Pages
+app.get("/", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
+app.get("/host", (req, res) => res.sendFile(path.join(__dirname, "public", "host.html")));
+app.get("/play", (req, res) => res.sendFile(path.join(__dirname, "public", "play.html")));
+
+// REST endpoint to create room
 app.get("/api/rooms/create", (req, res) => {
   const code = createUniqueRoomCode();
   res.json({ roomCode: code });
@@ -38,30 +42,20 @@ app.get("/api/rooms/create", (req, res) => {
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
 
-  // Join a room
   socket.on("joinRoom", ({ roomCode }) => {
     const code = String(roomCode || "").trim().toUpperCase();
-    if (!code) {
-      socket.emit("errorMsg", "Room code is required.");
-      return;
-    }
+    if (!code) return socket.emit("errorMsg", "Room code is required.");
+    if (!rooms.has(code)) return socket.emit("errorMsg", `Room "${code}" does not exist.`);
 
-    if (!rooms.has(code)) {
-      socket.emit("errorMsg", `Room "${code}" does not exist.`);
-      return;
-    }
-
-    // Leave any previous room (simple rule: 1 room per socket)
+    // Leave any previous room (1 room per socket)
     for (const r of socket.rooms) {
       if (r !== socket.id) socket.leave(r);
     }
 
     socket.join(code);
 
-    // Update members count (best-effort simple)
     const room = rooms.get(code);
     room.membersCount += 1;
-
     socket.data.roomCode = code;
 
     socket.emit("joinedRoom", { roomCode: code });
@@ -70,15 +64,10 @@ io.on("connection", (socket) => {
     console.log(`${socket.id} joined room ${code}`);
   });
 
-  // Handle buzz inside the room only
   socket.on("buzz", () => {
     const roomCode = socket.data.roomCode;
-    if (!roomCode) {
-      socket.emit("errorMsg", "Join a room first.");
-      return;
-    }
+    if (!roomCode) return socket.emit("errorMsg", "Join a room first.");
 
-    console.log("Buzz from", socket.id, "in room", roomCode);
     io.to(roomCode).emit("buzzed", { by: socket.id, roomCode });
   });
 
