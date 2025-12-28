@@ -9,14 +9,6 @@ const io = new Server(server);
 
 app.use(express.static("public"));
 
-/**
- * Room state:
- * phase: "lobby" | "armed" | "locked"
- * teams: A and B (for now)
- * - scores
- * - lockouts per round
- * - who buzzed (socket + team) for host correct/incorrect
- */
 const rooms = new Map(); // roomCode -> roomState
 
 function randomString(len = 12) {
@@ -40,6 +32,15 @@ function createUniqueRoomCode() {
   return code;
 }
 
+function makeTeams(initialCount) {
+  const teams = {};
+  for (let i = 1; i <= initialCount; i++) {
+    const id = String(i);
+    teams[id] = { id, name: `Team ${i}`, score: 0 };
+  }
+  return teams;
+}
+
 function createRoom() {
   const roomCode = createUniqueRoomCode();
   const hostKey = randomString(20);
@@ -51,12 +52,11 @@ function createRoom() {
     membersCount: 0,
 
     // game state
-    phase: "lobby",
+    phase: "lobby", // "lobby" | "armed" | "locked"
     armedAt: null,
 
-    // last buzz info (for host decision)
     lockedBySocketId: null,
-    lockedByTeam: null,
+    lockedByTeamId: null,
 
     // timer
     durationMs: 15000,
@@ -64,14 +64,16 @@ function createRoom() {
     timerRunning: false,
     timerLastTickAt: null,
 
-    // teams
-    teams: {
-      A: { name: "Team A", score: 0 },
-      B: { name: "Team B", score: 0 }
-    },
+    // teams (dynamic)
+    teams: makeTeams(2), // start with 2 teams
+    maxTeams: 6,
 
-    // per-round lockout: set of team IDs ("A" or "B") that cannot buzz again this round
-    lockedOutTeams: new Set()
+    // per-round lockout
+    lockedOutTeams: new Set(),
+
+    // permanent team assignment per room (survives refresh)
+    // playerId -> teamId
+    playerTeams: new Map()
   });
 
   return { roomCode, hostKey };
@@ -89,12 +91,9 @@ function publicRoomState(room) {
     timerRunning: room.timerRunning,
 
     lockedBySocketId: room.lockedBySocketId,
-    lockedByTeam: room.lockedByTeam,
+    lockedByTeamId: room.lockedByTeamId,
 
-    teams: {
-      A: { name: room.teams.A.name, score: room.teams.A.score },
-      B: { name: room.teams.B.name, score: room.teams.B.score }
-    },
+    teams: Object.values(room.teams).map((t) => ({ id: t.id, name: t.name, score: t.score })),
     lockedOutTeams: Array.from(room.lockedOutTeams)
   };
 }
@@ -127,7 +126,7 @@ function resetRound(room) {
   room.phase = "lobby";
   room.armedAt = null;
   room.lockedBySocketId = null;
-  room.lockedByTeam = null;
+  room.lockedByTeamId = null;
 
   room.timerRunning = false;
   room.timerLastTickAt = null;
@@ -140,8 +139,6 @@ function resetRound(room) {
 const TICK_MS = 200;
 setInterval(() => {
   const now = Date.now();
-  let anyEmitted = false;
-
   for (const room of rooms.values()) {
     if (!room.timerRunning) continue;
 
@@ -155,15 +152,11 @@ setInterval(() => {
     if (room.remainingMs === 0) {
       room.timerRunning = false;
       room.timerLastTickAt = null;
-      resetRound(room); // time up ends round
+      resetRound(room);
     }
 
     emitRoomState(room.roomCode);
-    anyEmitted = true;
   }
-
-  // avoid extra emissions; timer-running rooms already emitted
-  if (anyEmitted) return;
 }, TICK_MS);
 
 // Pages
@@ -178,43 +171,106 @@ app.get("/api/rooms/create", (req, res) => {
 });
 
 io.on("connection", (socket) => {
-  console.log("User connected:", socket.id);
-
-  socket.on("joinRoom", ({ roomCode, hostKey } = {}) => {
+  socket.on("joinRoom", ({ roomCode, hostKey, playerId } = {}) => {
     const code = String(roomCode || "").trim().toUpperCase();
     if (!code) return socket.emit("errorMsg", "Room code is required.");
+
     const room = rooms.get(code);
     if (!room) return socket.emit("errorMsg", `Room "${code}" does not exist.`);
 
-    // Leave previous (1 room per socket)
+    // Leave previous room (1 room per socket)
     for (const r of socket.rooms) if (r !== socket.id) socket.leave(r);
 
     socket.join(code);
     socket.data.roomCode = code;
+
+    // host auth
     socket.data.isHost = Boolean(hostKey && hostKey === room.hostKey);
+
+    // player identity (for refresh persistence)
+    if (playerId && typeof playerId === "string") {
+      socket.data.playerId = playerId;
+    }
 
     room.membersCount += 1;
 
     socket.emit("joinedRoom", { roomCode: code, isHost: socket.data.isHost });
+
+    // If this is a player reconnect, re-send their existing team (if any)
+    if (!socket.data.isHost && socket.data.playerId) {
+      const existingTeam = room.playerTeams.get(socket.data.playerId);
+      if (existingTeam) {
+        socket.data.teamId = existingTeam;
+        socket.emit("teamSet", { teamId: existingTeam, locked: true });
+      }
+    }
+
     emitRoomState(code);
   });
 
-  // Player picks team: "A" or "B"
+  /**
+   * Host can INCREASE teams (up to 6).
+   * This does NOT reset scores.
+   */
+  socket.on("hostSetTeamCount", ({ count } = {}) => {
+    const room = requireRoom(socket);
+    if (!room) return;
+    if (!isHost(socket, room)) return socket.emit("errorMsg", "Host only.");
+
+    const desired = Number(count);
+    if (!Number.isInteger(desired) || desired < 2 || desired > room.maxTeams) {
+      return socket.emit("errorMsg", "Team count must be between 2 and 6.");
+    }
+
+    const currentCount = Object.keys(room.teams).length;
+    if (desired < currentCount) {
+      return socket.emit("errorMsg", "You can only increase team count (not decrease) for now.");
+    }
+    if (desired === currentCount) return;
+
+    // Add new teams
+    for (let i = currentCount + 1; i <= desired; i++) {
+      const id = String(i);
+      room.teams[id] = { id, name: `Team ${i}`, score: 0 };
+    }
+
+    emitRoomState(room.roomCode);
+  });
+
+  /**
+   * Player chooses team ONCE.
+   * If already assigned (server-side), reject changes.
+   */
   socket.on("setTeam", ({ teamId } = {}) => {
     const room = requireRoom(socket);
     if (!room) return;
 
-    const t = String(teamId || "").toUpperCase();
-    if (t !== "A" && t !== "B") {
-      socket.emit("errorMsg", "Team must be A or B.");
+    if (socket.data.isHost) return socket.emit("errorMsg", "Host cannot select a team.");
+
+    if (!socket.data.playerId) {
+      return socket.emit("errorMsg", "Missing playerId. Refresh /play page.");
+    }
+
+    const existing = room.playerTeams.get(socket.data.playerId);
+    if (existing) {
+      // already locked forever for this room
+      socket.data.teamId = existing;
+      socket.emit("teamSet", { teamId: existing, locked: true });
       return;
     }
+
+    const t = String(teamId || "").trim();
+    if (!room.teams[t]) return socket.emit("errorMsg", "Invalid team.");
+
+    // assign permanently
+    room.playerTeams.set(socket.data.playerId, t);
     socket.data.teamId = t;
-    socket.emit("teamSet", { teamId: t });
+
+    socket.emit("teamSet", { teamId: t, locked: true });
     emitRoomState(room.roomCode);
   });
 
-  // Host: set duration seconds
+  // Host: duration
   socket.on("hostSetDuration", ({ seconds }) => {
     const room = requireRoom(socket);
     if (!room) return;
@@ -231,7 +287,7 @@ io.on("connection", (socket) => {
     emitRoomState(room.roomCode);
   });
 
-  // Host: arm round (beep) -> clears per-round lockouts
+  // Host: arm (beep) resets per-round lockouts
   socket.on("hostArm", () => {
     const room = requireRoom(socket);
     if (!room) return;
@@ -240,7 +296,7 @@ io.on("connection", (socket) => {
     room.phase = "armed";
     room.armedAt = Date.now();
     room.lockedBySocketId = null;
-    room.lockedByTeam = null;
+    room.lockedByTeamId = null;
 
     room.lockedOutTeams.clear();
 
@@ -260,6 +316,7 @@ io.on("connection", (socket) => {
     if (room.remainingMs <= 0) room.remainingMs = room.durationMs;
     room.timerRunning = true;
     room.timerLastTickAt = Date.now();
+
     emitRoomState(room.roomCode);
   });
 
@@ -270,24 +327,22 @@ io.on("connection", (socket) => {
 
     room.timerRunning = false;
     room.timerLastTickAt = null;
+
     emitRoomState(room.roomCode);
   });
 
-  // Host: incorrect -> lock out that team, unlock, resume timer
+  // Host: incorrect -> lock out buzzing team, unlock, resume timer
   socket.on("hostIncorrect", () => {
     const room = requireRoom(socket);
     if (!room) return;
     if (!isHost(socket, room)) return socket.emit("errorMsg", "Host only.");
-
     if (room.phase !== "locked") return;
 
-    // lock out the team that buzzed
-    if (room.lockedByTeam) room.lockedOutTeams.add(room.lockedByTeam);
+    if (room.lockedByTeamId) room.lockedOutTeams.add(room.lockedByTeamId);
 
-    // unlock, keep armed
     room.phase = "armed";
     room.lockedBySocketId = null;
-    room.lockedByTeam = null;
+    room.lockedByTeamId = null;
 
     if (room.remainingMs > 0) {
       room.timerRunning = true;
@@ -297,16 +352,15 @@ io.on("connection", (socket) => {
     emitRoomState(room.roomCode);
   });
 
-  // Host: correct -> give point to last buzzing team, end round
+  // Host: correct -> +1 to buzzing team, end round
   socket.on("hostCorrect", () => {
     const room = requireRoom(socket);
     if (!room) return;
     if (!isHost(socket, room)) return socket.emit("errorMsg", "Host only.");
-
     if (room.phase !== "locked") return;
 
-    if (room.lockedByTeam && room.teams[room.lockedByTeam]) {
-      room.teams[room.lockedByTeam].score += 1;
+    if (room.lockedByTeamId && room.teams[room.lockedByTeamId]) {
+      room.teams[room.lockedByTeamId].score += 1;
     }
 
     resetRound(room);
@@ -319,10 +373,10 @@ io.on("connection", (socket) => {
     if (!room) return;
     if (!isHost(socket, room)) return socket.emit("errorMsg", "Host only.");
 
-    const t = String(teamId || "").toUpperCase();
+    const t = String(teamId || "").trim();
     const d = Number(delta);
 
-    if ((t !== "A" && t !== "B") || !Number.isFinite(d) || !Number.isInteger(d) || Math.abs(d) > 10) {
+    if (!room.teams[t] || !Number.isInteger(d) || Math.abs(d) > 10) {
       return socket.emit("errorMsg", "Invalid score adjustment.");
     }
 
@@ -336,33 +390,21 @@ io.on("connection", (socket) => {
     if (!room) return;
 
     const teamId = socket.data.teamId;
-    if (teamId !== "A" && teamId !== "B") {
-      socket.emit("buzzRejected", { reason: "NO_TEAM" });
-      return;
-    }
+    if (!teamId) return socket.emit("buzzRejected", { reason: "NO_TEAM" });
 
     if (room.phase !== "armed") {
-      socket.emit("buzzRejected", { reason: room.phase === "lobby" ? "NOT_ARMED" : "LOCKED" });
-      return;
+      return socket.emit("buzzRejected", { reason: room.phase === "lobby" ? "NOT_ARMED" : "LOCKED" });
     }
+    if (room.remainingMs <= 0) return socket.emit("buzzRejected", { reason: "TIME_UP" });
 
-    if (room.remainingMs <= 0) {
-      socket.emit("buzzRejected", { reason: "TIME_UP" });
-      return;
-    }
-
-    // team lockout rule
     if (room.lockedOutTeams.has(teamId)) {
-      socket.emit("buzzRejected", { reason: "TEAM_LOCKED_OUT" });
-      return;
+      return socket.emit("buzzRejected", { reason: "TEAM_LOCKED_OUT" });
     }
 
-    // lock the round
     room.phase = "locked";
     room.lockedBySocketId = socket.id;
-    room.lockedByTeam = teamId;
+    room.lockedByTeamId = teamId;
 
-    // pause timer
     room.timerRunning = false;
     room.timerLastTickAt = null;
 
@@ -376,10 +418,9 @@ io.on("connection", (socket) => {
       const room = rooms.get(roomCode);
       room.membersCount = Math.max(0, room.membersCount - 1);
 
-      // If locked socket left, unlock and resume timer
       if (room.lockedBySocketId === socket.id) {
         room.lockedBySocketId = null;
-        room.lockedByTeam = null;
+        room.lockedByTeamId = null;
         room.phase = room.armedAt ? "armed" : "lobby";
         if (room.phase === "armed" && room.remainingMs > 0) {
           room.timerRunning = true;
