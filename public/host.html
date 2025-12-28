@@ -6,7 +6,7 @@
     <title>ADABRA • Host</title>
     <style>
       body { font-family: system-ui, -apple-system, Arial; padding: 24px; }
-      .card { border: 1px solid #ddd; border-radius: 10px; padding: 16px; max-width: 1040px; }
+      .card { border: 1px solid #ddd; border-radius: 10px; padding: 16px; max-width: 1100px; }
       .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 12px 0; }
       button { padding: 10px 14px; font-size: 16px; cursor: pointer; }
       .code { font-size: 28px; letter-spacing: 3px; font-weight: 700; }
@@ -21,6 +21,10 @@
       .teamTitle { font-weight: 700; font-size: 18px; }
       .score { font-size: 30px; font-variant-numeric: tabular-nums; }
       .lockout { font-size: 13px; }
+
+      .qBox { border: 1px solid #eee; border-radius: 10px; padding: 12px; background: #fafafa; }
+      .qTitle { font-weight: 800; font-size: 18px; margin-bottom: 6px; }
+      .qText { font-size: 16px; line-height: 1.4; white-space: pre-wrap; }
     </style>
   </head>
   <body>
@@ -54,16 +58,25 @@
       <hr />
 
       <div class="row">
+        <button id="nextQ" disabled>Next Question</button>
+        <button id="resetGame" disabled>Reset Game (scores + questions)</button>
+      </div>
+
+      <div class="qBox">
+        <div class="qTitle" id="qTitle">Question: not started</div>
+        <div class="muted" id="qMeta">—</div>
+        <div class="qText" id="qText">Click “Next Question” to begin.</div>
+      </div>
+
+      <hr />
+
+      <div class="row">
         <label class="muted">Teams</label>
         <select id="teamCount">
-          <option value="2">2</option>
-          <option value="3">3</option>
-          <option value="4">4</option>
-          <option value="5">5</option>
-          <option value="6">6</option>
+          <option value="2">2</option><option value="3">3</option><option value="4">4</option>
+          <option value="5">5</option><option value="6">6</option>
         </select>
         <button id="applyTeams" disabled>Increase teams</button>
-        <span class="muted">Only increases; does not reset scores.</span>
       </div>
 
       <div class="row">
@@ -80,7 +93,7 @@
 
       <div class="row">
         <button id="incorrect" disabled>Incorrect (Lock out team)</button>
-        <button id="correct" disabled>Correct (+1 and end round)</button>
+        <button id="correct" disabled>Correct (Add points & end round)</button>
       </div>
 
       <div class="row">
@@ -109,6 +122,12 @@
       const roomCodeEl = document.getElementById("roomCode");
       const playerLinkEl = document.getElementById("playerLink");
       const copyBtn = document.getElementById("copy");
+
+      const nextQBtn = document.getElementById("nextQ");
+      const resetGameBtn = document.getElementById("resetGame");
+      const qTitleEl = document.getElementById("qTitle");
+      const qMetaEl = document.getElementById("qMeta");
+      const qTextEl = document.getElementById("qText");
 
       const phaseEl = document.getElementById("phase");
       const membersEl = document.getElementById("members");
@@ -148,6 +167,8 @@
         pauseTimerBtn.disabled = !enabled;
         incorrectBtn.disabled = !enabled;
         correctBtn.disabled = !enabled;
+        nextQBtn.disabled = !enabled;
+        resetGameBtn.disabled = !enabled;
       }
 
       function formatMs(ms) {
@@ -171,6 +192,8 @@
             <div class="row">
               <button data-team="${t.id}" data-delta="1">+1</button>
               <button data-team="${t.id}" data-delta="-1">-1</button>
+              <button data-team="${t.id}" data-delta="5">+5</button>
+              <button data-team="${t.id}" data-delta="-5">-5</button>
             </div>
             <div class="lockout ${locked.has(t.id) ? "err" : "muted"}">
               ${locked.has(t.id) ? "LOCKED OUT this round" : "Not locked out"}
@@ -200,7 +223,6 @@
 
           roomCodeEl.textContent = currentRoom;
           roomCodeEl.className = "code ok";
-
           playerLinkEl.value = `${location.origin}/play?room=${encodeURIComponent(currentRoom)}`;
 
           socket.emit("joinRoom", { roomCode: currentRoom, hostKey });
@@ -222,6 +244,9 @@
         }
       };
 
+      nextQBtn.onclick = () => socket.emit("hostNextQuestion");
+      resetGameBtn.onclick = () => socket.emit("hostResetGame");
+
       applyTeamsBtn.onclick = () => socket.emit("hostSetTeamCount", { count: Number(teamCountSel.value) });
       setDurationBtn.onclick = () => socket.emit("hostSetDuration", { seconds: Number(durationInput.value) });
 
@@ -232,6 +257,24 @@
       correctBtn.onclick = () => socket.emit("hostCorrect");
 
       socket.on("errorMsg", (text) => setStatus(text, "err"));
+
+      // host-only state includes question text
+      socket.on("hostState", (state) => {
+        if (!currentRoom || state.roomCode !== currentRoom) return;
+
+        const idx = state.currentQuestionIndex;
+        const total = state.totalQuestions;
+
+        if (idx === -1) {
+          qTitleEl.textContent = "Question: not started";
+          qMetaEl.textContent = "—";
+          qTextEl.textContent = "Click “Next Question” to begin.";
+        } else {
+          qTitleEl.textContent = `Question ${idx + 1} / ${total}`;
+          qMetaEl.textContent = `Points: ${state.currentQuestionPoints ?? 1}`;
+          qTextEl.textContent = state.currentQuestionText || "(no text)";
+        }
+      });
 
       socket.on("roomState", (state) => {
         if (!currentRoom || state.roomCode !== currentRoom) return;
@@ -249,8 +292,6 @@
         lockedTeamEl.textContent = state.lockedByTeamId || "—";
 
         durationInput.value = String(Math.round(state.durationMs / 1000));
-
-        // keep dropdown aligned with current number of teams
         teamCountSel.value = String(state.teams.length);
 
         renderScoreboard(state.teams, state.lockedOutTeams);
