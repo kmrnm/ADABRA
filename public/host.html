@@ -6,7 +6,7 @@
     <title>ADABRA • Host</title>
     <style>
       body { font-family: system-ui, -apple-system, Arial; padding: 24px; }
-      .card { border: 1px solid #ddd; border-radius: 10px; padding: 16px; max-width: 860px; }
+      .card { border: 1px solid #ddd; border-radius: 10px; padding: 16px; max-width: 980px; }
       .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 12px 0; }
       button { padding: 10px 14px; font-size: 16px; cursor: pointer; }
       .code { font-size: 28px; letter-spacing: 3px; font-weight: 700; }
@@ -16,6 +16,11 @@
       input { padding: 10px; font-size: 16px; }
       .pill { display: inline-block; padding: 6px 10px; border: 1px solid #ddd; border-radius: 999px; }
       #time { font-variant-numeric: tabular-nums; font-size: 20px; }
+      .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+      .teamCard { border: 1px solid #eee; border-radius: 10px; padding: 12px; }
+      .teamTitle { font-weight: 700; font-size: 18px; }
+      .score { font-size: 30px; font-variant-numeric: tabular-nums; }
+      .lockout { font-size: 13px; }
     </style>
   </head>
   <body>
@@ -41,7 +46,7 @@
       <div class="row">
         <div style="flex: 1;">
           <div class="muted">Player link</div>
-          <input id="playerLink" readonly style="width: 520px;" />
+          <input id="playerLink" readonly style="width: 560px;" />
         </div>
         <button id="copy">Copy Link</button>
       </div>
@@ -61,17 +66,44 @@
       </div>
 
       <div class="row">
-        <button id="incorrect" disabled>Incorrect (Release)</button>
-        <button id="correct" disabled>Correct (End Round)</button>
+        <button id="incorrect" disabled>Incorrect (Lock out team)</button>
+        <button id="correct" disabled>Correct (+1 and end round)</button>
       </div>
 
       <div class="row">
         <span class="muted">Locked by:</span>
         <strong id="lockedBy" class="muted">—</strong>
+        <span class="muted">Team:</span>
+        <strong id="lockedTeam" class="muted">—</strong>
       </div>
 
       <div class="row">
         <span id="lastBuzz" class="muted">No buzz yet.</span>
+      </div>
+
+      <hr />
+
+      <h2 style="margin: 0 0 8px 0;">Scoreboard</h2>
+      <div class="grid">
+        <div class="teamCard">
+          <div class="teamTitle" id="teamAName">Team A</div>
+          <div class="score" id="teamAScore">0</div>
+          <div class="row">
+            <button id="aPlus">+1</button>
+            <button id="aMinus">-1</button>
+          </div>
+          <div class="lockout muted" id="aLockout">Not locked out</div>
+        </div>
+
+        <div class="teamCard">
+          <div class="teamTitle" id="teamBName">Team B</div>
+          <div class="score" id="teamBScore">0</div>
+          <div class="row">
+            <button id="bPlus">+1</button>
+            <button id="bMinus">-1</button>
+          </div>
+          <div class="lockout muted" id="bLockout">Not locked out</div>
+        </div>
       </div>
     </div>
 
@@ -87,20 +119,26 @@
 
       const phaseEl = document.getElementById("phase");
       const membersEl = document.getElementById("members");
+      const timeEl = document.getElementById("time");
+      const runningEl = document.getElementById("running");
+
       const lockedByEl = document.getElementById("lockedBy");
+      const lockedTeamEl = document.getElementById("lockedTeam");
       const lastBuzzEl = document.getElementById("lastBuzz");
 
       const durationInput = document.getElementById("duration");
       const setDurationBtn = document.getElementById("setDuration");
-
-      const timeEl = document.getElementById("time");
-      const runningEl = document.getElementById("running");
 
       const armBtn = document.getElementById("arm");
       const startTimerBtn = document.getElementById("startTimer");
       const pauseTimerBtn = document.getElementById("pauseTimer");
       const incorrectBtn = document.getElementById("incorrect");
       const correctBtn = document.getElementById("correct");
+
+      const teamAScoreEl = document.getElementById("teamAScore");
+      const teamBScoreEl = document.getElementById("teamBScore");
+      const aLockoutEl = document.getElementById("aLockout");
+      const bLockoutEl = document.getElementById("bLockout");
 
       let currentRoom = null;
       let hostKey = null;
@@ -158,15 +196,18 @@
         }
       };
 
-      setDurationBtn.onclick = () => {
-        socket.emit("hostSetDuration", { seconds: Number(durationInput.value) });
-      };
+      setDurationBtn.onclick = () => socket.emit("hostSetDuration", { seconds: Number(durationInput.value) });
 
       armBtn.onclick = () => socket.emit("hostArm");
       startTimerBtn.onclick = () => socket.emit("hostStartTimer");
       pauseTimerBtn.onclick = () => socket.emit("hostPauseTimer");
       incorrectBtn.onclick = () => socket.emit("hostIncorrect");
       correctBtn.onclick = () => socket.emit("hostCorrect");
+
+      document.getElementById("aPlus").onclick = () => socket.emit("hostAdjustScore", { teamId: "A", delta: 1 });
+      document.getElementById("aMinus").onclick = () => socket.emit("hostAdjustScore", { teamId: "A", delta: -1 });
+      document.getElementById("bPlus").onclick = () => socket.emit("hostAdjustScore", { teamId: "B", delta: 1 });
+      document.getElementById("bMinus").onclick = () => socket.emit("hostAdjustScore", { teamId: "B", delta: -1 });
 
       socket.on("joinedRoom", ({ isHost }) => {
         if (!isHost) setStatus("Joined room, but not recognized as host.", "err");
@@ -180,21 +221,32 @@
         phaseEl.className = state.phase === "armed" ? "ok" : "muted";
 
         membersEl.textContent = String(state.membersCount);
-
-        lockedByEl.textContent = state.lockedBy ? state.lockedBy : "—";
-        lockedByEl.className = state.lockedBy ? "ok" : "muted";
-
         timeEl.textContent = formatMs(state.remainingMs);
+
         runningEl.textContent = state.timerRunning ? "yes" : "no";
         runningEl.className = state.timerRunning ? "ok" : "muted";
 
-        // keep duration input synced (in case host changes it)
+        lockedByEl.textContent = state.lockedBySocketId || "—";
+        lockedByEl.className = state.lockedBySocketId ? "ok" : "muted";
+
+        lockedTeamEl.textContent = state.lockedByTeam || "—";
+        lockedTeamEl.className = state.lockedByTeam ? "ok" : "muted";
+
         durationInput.value = String(Math.round(state.durationMs / 1000));
+
+        teamAScoreEl.textContent = String(state.teams.A.score);
+        teamBScoreEl.textContent = String(state.teams.B.score);
+
+        const lockedOut = new Set(state.lockedOutTeams || []);
+        aLockoutEl.textContent = lockedOut.has("A") ? "LOCKED OUT this round" : "Not locked out";
+        aLockoutEl.className = lockedOut.has("A") ? "lockout err" : "lockout muted";
+        bLockoutEl.textContent = lockedOut.has("B") ? "LOCKED OUT this round" : "Not locked out";
+        bLockoutEl.className = lockedOut.has("B") ? "lockout err" : "lockout muted";
       });
 
-      socket.on("buzzed", ({ by, roomCode }) => {
+      socket.on("buzzed", ({ by, teamId, roomCode }) => {
         if (roomCode !== currentRoom) return;
-        lastBuzzEl.textContent = `Buzz by ${by}`;
+        lastBuzzEl.textContent = `Buzz by ${by} (Team ${teamId})`;
         lastBuzzEl.className = "ok";
       });
 
