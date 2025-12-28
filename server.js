@@ -12,6 +12,7 @@ app.use(express.static("public"));
 /**
  * Room state (in-memory):
  * phase: "lobby" | "armed" | "locked"
+ * timer: authoritative, server-driven
  */
 const rooms = new Map(); // roomCode -> roomState
 
@@ -49,21 +50,30 @@ function createRoom() {
 
     // game state
     phase: "lobby",
-    armedAt: null, // server timestamp when host armed (beep)
-    lockedBy: null // socket.id that buzzed first
+    armedAt: null,
+    lockedBy: null,
+
+    // timer state
+    durationMs: 15000,
+    remainingMs: 15000,
+    timerRunning: false,
+    timerLastTickAt: null
   });
 
   return { roomCode, hostKey };
 }
 
 function publicRoomState(room) {
-  // Never leak hostKey to clients
   return {
     roomCode: room.roomCode,
     membersCount: room.membersCount,
     phase: room.phase,
     armedAt: room.armedAt,
-    lockedBy: room.lockedBy
+    lockedBy: room.lockedBy,
+
+    durationMs: room.durationMs,
+    remainingMs: room.remainingMs,
+    timerRunning: room.timerRunning
   };
 }
 
@@ -73,12 +83,56 @@ function emitRoomState(roomCode) {
   io.to(roomCode).emit("roomState", publicRoomState(room));
 }
 
+function isHost(socket, room) {
+  return Boolean(socket?.data?.isHost && room);
+}
+
+/**
+ * Timer tick loop: global, lightweight.
+ * Decrements remainingMs for rooms where timerRunning is true.
+ */
+const TICK_MS = 200;
+
+setInterval(() => {
+  const now = Date.now();
+
+  for (const room of rooms.values()) {
+    if (!room.timerRunning) continue;
+
+    if (room.timerLastTickAt == null) room.timerLastTickAt = now;
+
+    const delta = now - room.timerLastTickAt;
+    if (delta <= 0) continue;
+
+    room.timerLastTickAt = now;
+    room.remainingMs = Math.max(0, room.remainingMs - delta);
+
+    // If time is up, end the round
+    if (room.remainingMs === 0) {
+      room.timerRunning = false;
+      room.timerLastTickAt = null;
+
+      // End round: back to lobby, disarm
+      room.phase = "lobby";
+      room.armedAt = null;
+      room.lockedBy = null;
+    }
+  }
+
+  // Broadcast state periodically (we can do it every tick; still fine for small classes)
+  for (const room of rooms.values()) {
+    if (room.timerRunning || room.remainingMs === 0) {
+      emitRoomState(room.roomCode);
+    }
+  }
+}, TICK_MS);
+
 // Pages
 app.get("/", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
 app.get("/host", (req, res) => res.sendFile(path.join(__dirname, "public", "host.html")));
 app.get("/play", (req, res) => res.sendFile(path.join(__dirname, "public", "play.html")));
 
-// Create room endpoint (host uses it)
+// Create room endpoint
 app.get("/api/rooms/create", (req, res) => {
   const { roomCode, hostKey } = createRoom();
   res.json({ roomCode, hostKey });
@@ -101,7 +155,6 @@ io.on("connection", (socket) => {
     socket.join(code);
     socket.data.roomCode = code;
 
-    // Host identification (simple)
     socket.data.isHost = Boolean(hostKey && hostKey === room.hostKey);
 
     room.membersCount += 1;
@@ -112,49 +165,115 @@ io.on("connection", (socket) => {
     console.log(`${socket.id} joined room ${code} (host=${socket.data.isHost})`);
   });
 
+  // Host: set duration (seconds)
+  socket.on("hostSetDuration", ({ seconds }) => {
+    const roomCode = socket.data.roomCode;
+    if (!roomCode) return socket.emit("errorMsg", "Join a room first.");
+    const room = rooms.get(roomCode);
+    if (!room) return socket.emit("errorMsg", "Room not found.");
+    if (!isHost(socket, room)) return socket.emit("errorMsg", "Host only.");
+
+    const s = Number(seconds);
+    if (!Number.isFinite(s) || s <= 0 || s > 600) {
+      return socket.emit("errorMsg", "Duration must be between 1 and 600 seconds.");
+    }
+
+    room.durationMs = Math.floor(s * 1000);
+
+    // Only reset remaining time if timer isn't running (keeps behavior predictable)
+    if (!room.timerRunning) room.remainingMs = room.durationMs;
+
+    emitRoomState(roomCode);
+  });
+
   // Host: arm buzzer (beep moment)
   socket.on("hostArm", () => {
     const roomCode = socket.data.roomCode;
     if (!roomCode) return socket.emit("errorMsg", "Join a room first.");
     const room = rooms.get(roomCode);
     if (!room) return socket.emit("errorMsg", "Room not found.");
-    if (!socket.data.isHost) return socket.emit("errorMsg", "Host only.");
+    if (!isHost(socket, room)) return socket.emit("errorMsg", "Host only.");
 
     room.phase = "armed";
     room.armedAt = Date.now();
     room.lockedBy = null;
 
+    // reset timer but do not start automatically
+    room.timerRunning = false;
+    room.timerLastTickAt = null;
+    room.remainingMs = room.durationMs;
+
     emitRoomState(roomCode);
   });
 
-  // Host: mark correct -> end round (back to lobby)
+  // Host: start/resume timer
+  socket.on("hostStartTimer", () => {
+    const roomCode = socket.data.roomCode;
+    if (!roomCode) return socket.emit("errorMsg", "Join a room first.");
+    const room = rooms.get(roomCode);
+    if (!room) return socket.emit("errorMsg", "Room not found.");
+    if (!isHost(socket, room)) return socket.emit("errorMsg", "Host only.");
+
+    if (room.phase !== "armed") {
+      return socket.emit("errorMsg", "You can start timer only when phase is ARMED.");
+    }
+    if (room.remainingMs <= 0) room.remainingMs = room.durationMs;
+
+    room.timerRunning = true;
+    room.timerLastTickAt = Date.now();
+    emitRoomState(roomCode);
+  });
+
+  // Host: pause timer
+  socket.on("hostPauseTimer", () => {
+    const roomCode = socket.data.roomCode;
+    if (!roomCode) return socket.emit("errorMsg", "Join a room first.");
+    const room = rooms.get(roomCode);
+    if (!room) return socket.emit("errorMsg", "Room not found.");
+    if (!isHost(socket, room)) return socket.emit("errorMsg", "Host only.");
+
+    room.timerRunning = false;
+    room.timerLastTickAt = null;
+    emitRoomState(roomCode);
+  });
+
+  // Host: correct -> end round (lobby, timer stop)
   socket.on("hostCorrect", () => {
     const roomCode = socket.data.roomCode;
     if (!roomCode) return socket.emit("errorMsg", "Join a room first.");
     const room = rooms.get(roomCode);
     if (!room) return socket.emit("errorMsg", "Room not found.");
-    if (!socket.data.isHost) return socket.emit("errorMsg", "Host only.");
+    if (!isHost(socket, room)) return socket.emit("errorMsg", "Host only.");
 
     room.phase = "lobby";
     room.lockedBy = null;
     room.armedAt = null;
 
+    room.timerRunning = false;
+    room.timerLastTickAt = null;
+    room.remainingMs = room.durationMs;
+
     emitRoomState(roomCode);
   });
 
-  // Host: incorrect -> release lock, keep armed (others can buzz)
+  // Host: incorrect -> release lock, keep armed, resume timer (if time left)
   socket.on("hostIncorrect", () => {
     const roomCode = socket.data.roomCode;
     if (!roomCode) return socket.emit("errorMsg", "Join a room first.");
     const room = rooms.get(roomCode);
     if (!room) return socket.emit("errorMsg", "Room not found.");
-    if (!socket.data.isHost) return socket.emit("errorMsg", "Host only.");
+    if (!isHost(socket, room)) return socket.emit("errorMsg", "Host only.");
 
-    // If already armed, just unlock; if lobby, do nothing
     if (room.phase === "locked") {
       room.phase = "armed";
       room.lockedBy = null;
-      // keep armedAt as-is (the buzzer is still armed)
+
+      // resume timer if time left
+      if (room.remainingMs > 0) {
+        room.timerRunning = true;
+        room.timerLastTickAt = Date.now();
+      }
+
       emitRoomState(roomCode);
     }
   });
@@ -166,16 +285,22 @@ io.on("connection", (socket) => {
     const room = rooms.get(roomCode);
     if (!room) return socket.emit("errorMsg", "Room not found.");
 
-    // False start or not allowed
+    // Not armed / locked / time up
     if (room.phase !== "armed") {
-      // In classic rules, buzzing before beep is false start. For now: reject.
       socket.emit("buzzRejected", { reason: room.phase === "lobby" ? "NOT_ARMED" : "LOCKED" });
       return;
     }
+    if (room.remainingMs <= 0) {
+      socket.emit("buzzRejected", { reason: "TIME_UP" });
+      return;
+    }
 
-    // First buzz wins
+    // First buzz wins: lock and pause timer
     room.phase = "locked";
     room.lockedBy = socket.id;
+
+    room.timerRunning = false;
+    room.timerLastTickAt = null;
 
     io.to(roomCode).emit("buzzed", { by: socket.id, roomCode });
     emitRoomState(roomCode);
@@ -187,15 +312,18 @@ io.on("connection", (socket) => {
       const room = rooms.get(roomCode);
       room.membersCount = Math.max(0, room.membersCount - 1);
 
-      // If the locked player disconnected, release lock (simple)
+      // If locked player disconnected, unlock and resume timer (if time left)
       if (room.lockedBy === socket.id) {
         room.lockedBy = null;
         room.phase = room.armedAt ? "armed" : "lobby";
+        if (room.phase === "armed" && room.remainingMs > 0) {
+          room.timerRunning = true;
+          room.timerLastTickAt = Date.now();
+        }
       }
 
       emitRoomState(roomCode);
     }
-
     console.log("User disconnected:", socket.id);
   });
 });
