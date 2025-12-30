@@ -90,6 +90,10 @@
 <body>
   <h1>ADABRA • Player</h1>
 
+  <div id="net" class="pill muted" style="display:none; width:100%; text-align:center;">
+    Reconnecting…
+  </div>
+
   <div class="card">
     <div class="row">
       <input id="roomCode" placeholder="ROOM" maxlength="6" />
@@ -140,6 +144,14 @@
   <script>
     const socket = io();
 
+    const netEl = document.getElementById("net");
+
+    socket.on("disconnect", () => {
+      netEl.style.display = "block";
+      netEl.textContent = "Disconnected. Reconnecting…";
+      netEl.className = "pill err";
+    });
+
     const roomInput = document.getElementById("roomCode");
     const joinBtn = document.getElementById("join");
 
@@ -166,7 +178,15 @@
     let myTeamId = null; // real team id: "1", "2", ...
 
     let mySocketId = null;
-    socket.on("connect", () => { mySocketId = socket.id; });
+    socket.on("connect", () => {
+      mySocketId = socket.id;
+
+      netEl.style.display = "none";
+
+      if (currentRoom) {
+        socket.emit("rejoinRoom", { roomCode: currentRoom, playerId });
+      }
+    });
 
     function teamLabel(teamId) {
       const t = (lastState?.teams || []).find(

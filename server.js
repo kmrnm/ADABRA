@@ -352,7 +352,7 @@ io.on("connection", (socket) => {
     room.lockedByTeamId = null;
     room.lastBuzz = null;
     room.lockedOutTeams.clear();
-    
+
     room.firstBuzzTeamId = null;
 
     room.remainingMs = room.durationMs;
@@ -483,6 +483,30 @@ io.on("connection", (socket) => {
 
     emitRoomState(roomCode);
   });
+
+  socket.on("rejoinRoom", ({ roomCode, playerId } = {}) => {
+    const code = String(roomCode || "").trim().toUpperCase();
+    if (!code || !playerId) return;
+
+    const room = rooms.get(code);
+    if (!room) return;
+
+    for (const r of socket.rooms) if (r !== socket.id) socket.leave(r);
+
+    socket.join(code);
+    socket.data.roomCode = code;
+    socket.data.playerId = String(playerId);
+
+    const existingTeam = room.playerTeams.get(socket.data.playerId);
+    if (existingTeam) {
+      socket.data.teamId = existingTeam;
+      socket.emit("teamSet", { teamId: existingTeam, locked: true });
+    }
+    room.membersCount += 1;
+    socket.emit("roomState", publicRoomState(room));
+  });
+
+
 });
 
 server.listen(3000, () => console.log("Server running on http://localhost:3000"));
