@@ -212,16 +212,25 @@
       localStorage.setItem(roomTeamKey(roomCode), teamId);
     }
 
-    function renderTeamButtons(teams, chosenTeamId) {
+    function renderTeamButtons(teams, chosenTeamId, takenTeams, myPlayerId) {
+      const taken = new Map((takenTeams || []).map(x => [x.teamId, x.playerId]));
+
       teamsEl.innerHTML = "";
       for (const t of teams) {
         const btn = document.createElement("button");
         btn.className = "teamBtn";
-        btn.textContent = `${t.name}`;
-        btn.disabled = Boolean(chosenTeamId);
+
+        const takenBy = taken.get(t.id);
+        const isTakenByOther = Boolean(takenBy && takenBy !== myPlayerId);
+
+        btn.textContent = isTakenByOther ? `${t.name} (Taken)` : `${t.name}`;
+
+        // If you already chose a team: disable all team buttons (same as before)
+        // If not chosen: disable only teams taken by others
+        btn.disabled = Boolean(chosenTeamId) || isTakenByOther;
 
         btn.onclick = () => {
-          if (chosenTeamId) return;
+          if (chosenTeamId || isTakenByOther) return;
           socket.emit("setTeam", { teamId: t.id });
         };
 
@@ -391,7 +400,7 @@
       timeEl.textContent = formatMs(state.remainingMs);
 
       const chosenTeam = getSavedTeam(currentRoom) || (teamEl.textContent !== "none" ? teamEl.textContent : null);
-      renderTeamButtons(state.teams, chosenTeam);
+      renderTeamButtons(state.teams, chosenTeam, state.takenTeams, playerId);
 
       updateMyScore();
       updateBuzzAvailability();
