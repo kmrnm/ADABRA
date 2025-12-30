@@ -47,34 +47,39 @@
 
                     <hr />
 
-                    <div class="row">
-                        <button id="nextRound" class="btn">Next Round (Reset)</button>
-                        <button id="beepStart" class="btn">Beep (Start Round)</button>
-                        <button id="pauseTimer" class="btn">Pause Timer</button>
+                    <div class="controlsCenter">
+                        <div class="controlsTop">
+                            <button id="nextRound" class="btn btn-ghost">↻ Next Round</button>
+                            <button id="beepStart" class="btn btn-start">🚀 START</button>
+                            <button id="pauseTimer" class="btn btn-warn">⏸ Pause</button>
+                        </div>
+
+                        <div class="controlsBottom">
+                            <button id="incorrect" class="btn btn-danger btn-round">✕</button>
+                            <button id="correct" class="btn btn-success btn-round">✓</button>
+                        </div>
                     </div>
 
-                    <div class="row">
-                        <button id="incorrect" class="btn">Incorrect (Lock out team)</button>
-                        <button id="correct" class="btn">Correct (+1 and end round)</button>
-                    </div>
+                    <div class="kvGrid">
+  <div class="kvLabel">Teams</div>
+  <div class="kvField">
+    <select id="teamCount" class="field">
+      <option value="2">2</option>
+      <option value="3">3</option>
+      <option value="4">4</option>
+      <option value="5">5</option>
+      <option value="6">6</option>
+    </select>
+    <button id="applyTeams" class="btn">Increase teams</button>
+  </div>
 
-                    <div class="row">
-                        <label class="muted">Teams</label>
-                        <select id="teamCount">
-                            <option value="2">2</option>
-                            <option value="3">3</option>
-                            <option value="4">4</option>
-                            <option value="5">5</option>
-                            <option value="6">6</option>
-                        </select>
-                        <button id="applyTeams" class="btn">Increase teams</button>
+  <div class="kvLabel">Duration (sec)</div>
+  <div class="kvField">
+    <input id="duration" class="field" type="number" min="1" max="600" step="1" value="15" />
+    <button id="setDuration" class="btn">Set</button>
+  </div>
+</div>
 
-                        <span style="width: 18px;"></span>
-
-                        <label class="muted">Duration (sec)</label>
-                        <input id="duration" type="number" min="1" max="600" step="1" value="15" style="width: 90px;" />
-                        <button id="setDuration" class="btn">Set</button>
-                    </div>
 
                     <div class="row">
                         <span class="muted">Last buzz:</span>
@@ -298,6 +303,8 @@
 
                 lastBuzzEl.className = "ok";
             }
+
+            beepStartBtn.classList.toggle("isArmed", state.phase === "armed");
 
             renderScoreboard(state.teams, state.lockedOutTeams, state.takenTeams);
         });
