@@ -413,11 +413,6 @@
         lockBannerEl.style.display = "none";
       }
 
-      // ===== STOP message updates while locked =====
-      if (state.phase === "locked" && state.lastBuzz) {
-        return;
-      }
-
       phaseEl.textContent = state.phase;
       phaseEl.className = state.phase === "armed" ? "ok" : "muted";
 
@@ -449,24 +444,31 @@
       // If a sticky message exists (locked out, etc.), keep it
       if (renderStickyMsgIfAny()) return;
 
-      // ---- NEW: show who buzzed first for everyone ----
+      // ===== LOCKED: show correct buzz message and STOP =====
       if (state.phase === "locked" && state.lastBuzz) {
         const myTeam =
           getSavedTeam(currentRoom) || (teamEl.textContent !== "none" ? teamEl.textContent : null);
 
         const isMe = myTeam && String(state.lastBuzz.teamId) === String(myTeam);
-        const isFirst = state.firstBuzzTeamId && String(state.firstBuzzTeamId) === String(state.lastBuzz.teamId);
+        const isFirst =
+          state.firstBuzzTeamId &&
+          String(state.firstBuzzTeamId) === String(state.lastBuzz.teamId);
 
         if (isFirst) {
-          if (isMe) setMsg("You buzzed first. Waiting for host decision…", "ok");
-          else setMsg(`${teamLabel(state.lastBuzz.teamId)} buzzed first. Wait…`, "muted");
+          if (isMe) {
+            setMsg("You buzzed first. Waiting for host decision…", "ok");
+          } else {
+            setMsg(`${teamLabel(state.lastBuzz.teamId)} buzzed first. Wait…`, "muted");
+          }
         } else {
-          // second (or later) chance after incorrect
-          if (isMe) setMsg("You buzzed. Now it’s your chance. Waiting for host…", "ok");
-          else setMsg(`${teamLabel(state.lastBuzz.teamId)} buzzed. Wait…`, "muted");
+          if (isMe) {
+            setMsg("You buzzed. Now it’s your chance. Waiting for host…", "ok");
+          } else {
+            setMsg(`${teamLabel(state.lastBuzz.teamId)} buzzed. Wait…`, "muted");
+          }
         }
 
-        return; // IMPORTANT: prevent later code from overwriting this message
+        return; // prevents "Round started. Buzz now!"
       }
 
       if (state.phase === "lobby") setMsg("Waiting for beep…", "muted");
