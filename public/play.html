@@ -413,7 +413,7 @@
 
         const myTeam = myTeamId || (currentRoom ? getSavedTeam(currentRoom) : null);
 
-        if (myTeam && state.lastBuzz.teamId === myTeam) {
+        if (myTeam && String(state.lastBuzz.teamId) === String(myTeam)) {
           lockBannerEl.textContent = "LOCKED — Your team is answering";
           lockBannerEl.className = "pill ok";
         } else {
