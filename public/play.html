@@ -167,6 +167,13 @@
     let mySocketId = null;
     socket.on("connect", () => { mySocketId = socket.id; });
 
+    function teamLabel(teamId) {
+      const t = (lastState?.teams || []).find(
+        x => String(x.id) === String(teamId)
+      );
+      return t ? t.name : `Team ${teamId}`;
+    }
+
     // message “locks”: if set, we keep it until explicitly cleared
     let stickyMsg = null; // { text, cls } or null
 
@@ -389,7 +396,6 @@
       // New round, reset phase clears sticky messages
       if (state.phase === "lobby") stickyMsg = null;
 
-
       // ----- LOCK BANNER LOGIC -----
       if (state.phase === "locked" && state.lastBuzz) {
         lockBannerEl.style.display = "block";
@@ -400,7 +406,7 @@
           lockBannerEl.textContent = "LOCKED — Your team is answering";
           lockBannerEl.className = "pill ok";
         } else {
-          lockBannerEl.textContent = `LOCKED — Team ${state.lastBuzz.teamId} is answering`;
+          lockBannerEl.textContent = `LOCKED — Team ${teamLabel(state.lastBuzz.teamId)} is answering`;
           lockBannerEl.className = "pill muted";
         }
       } else {
@@ -445,22 +451,31 @@
 
       // ---- NEW: show who buzzed first for everyone ----
       if (state.phase === "locked" && state.lastBuzz) {
-        if (state.lastBuzz.by === mySocketId) {
-          setMsg("You buzzed first. Waiting for host decision…", "ok");
+        const myTeam =
+          getSavedTeam(currentRoom) || (teamEl.textContent !== "none" ? teamEl.textContent : null);
+
+        const isMe = myTeam && String(state.lastBuzz.teamId) === String(myTeam);
+        const isFirst = state.firstBuzzTeamId && String(state.firstBuzzTeamId) === String(state.lastBuzz.teamId);
+
+        if (isFirst) {
+          if (isMe) setMsg("You buzzed first. Waiting for host decision…", "ok");
+          else setMsg(`${teamLabel(state.lastBuzz.teamId)} buzzed first. Wait…`, "muted");
         } else {
-          setMsg(`Team ${state.lastBuzz.teamId} buzzed first. Wait…`, "muted");
+          // second (or later) chance after incorrect
+          if (isMe) setMsg("You buzzed. Now it’s your chance. Waiting for host…", "ok");
+          else setMsg(`${teamLabel(state.lastBuzz.teamId)} buzzed. Wait…`, "muted");
         }
-        return;
+
+        return; // IMPORTANT: prevent later code from overwriting this message
       }
 
       if (state.phase === "lobby") setMsg("Waiting for beep…", "muted");
       if (state.phase === "armed") setMsg("Round started. Buzz now!", "ok");
     });
 
-    socket.on("buzzed", ({ teamId, roomCode }) => {
+    socket.on("buzzed", ({ roomCode }) => {
       if (roomCode !== currentRoom) return;
-
-      hardDisableBuzzNow();
+      hardDisableBuzzNow(); // stop spam instantly
 
       const myTeam =
         getSavedTeam(currentRoom) || (teamEl.textContent !== "none" ? teamEl.textContent : null);

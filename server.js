@@ -105,6 +105,8 @@ function publicRoomState(room) {
 
     takenTeams: Array.from(room.teamTaken.entries()).map(([teamId, playerId]) => ({ teamId, playerId })),
     teamNameLocked: Array.from(room.teamNameLocked),
+
+    firstBuzzTeamId: room.firstBuzzTeamId,
   };
 }
 
@@ -144,6 +146,8 @@ function resetToLobby(room) {
 
   room.lastBuzz = null;
   room.lockedOutTeams.clear();
+
+  room.firstBuzzTeamId = null;
 }
 
 // Timer loop
@@ -348,6 +352,8 @@ io.on("connection", (socket) => {
     room.lockedByTeamId = null;
     room.lastBuzz = null;
     room.lockedOutTeams.clear();
+    
+    room.firstBuzzTeamId = null;
 
     room.remainingMs = room.durationMs;
     room.timerRunning = true;
@@ -443,6 +449,9 @@ io.on("connection", (socket) => {
     room.phase = "locked";
     room.lockedBySocketId = socket.id;
     room.lockedByTeamId = teamId;
+
+    if (!room.firstBuzzTeamId) room.firstBuzzTeamId = teamId;
+
     room.lastBuzz = { by: socket.id, teamId };
 
     // pause timer while answering

@@ -218,6 +218,11 @@
             return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}.${t}`;
         }
 
+        function teamNameFromState(state, teamId) {
+            const t = (state.teams || []).find(x => String(x.id) === String(teamId));
+            return t ? t.name : `Team ${teamId}`;
+        }
+
         function renderScoreboard(teams, lockedOutTeams) {
             const locked = new Set(lockedOutTeams || []);
             scoreboardEl.innerHTML = "";
@@ -327,7 +332,13 @@
                 lastBuzzEl.textContent = "—";
                 lastBuzzEl.className = "muted";
             } else {
-                lastBuzzEl.textContent = `Buzz by ${state.lastBuzz.by} (Team ${state.lastBuzz.teamId})`;
+                const name = teamNameFromState(state, state.lastBuzz.teamId);
+                const isFirst = state.firstBuzzTeamId && String(state.firstBuzzTeamId) === String(state.lastBuzz.teamId);
+
+                lastBuzzEl.textContent = isFirst
+                    ? `${name} buzzed first`
+                    : `${name} buzzed`;
+
                 lastBuzzEl.className = "ok";
             }
 
