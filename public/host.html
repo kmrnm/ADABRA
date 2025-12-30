@@ -237,10 +237,10 @@
             <div class="teamTitle">${t.name} (ID ${t.id})</div>
             <div class="score">${t.score}</div>
             <div class="row">
-              <button data-team="${t.id}" data-delta="1">+1</button>
-              <button data-team="${t.id}" data-delta="-1">-1</button>
-              <button data-team="${t.id}" data-delta="5">+5</button>
-              <button data-team="${t.id}" data-delta="-5">-5</button>
+                <button data-team="${t.id}" data-delta="1">+1</button>
+                <button data-team="${t.id}" data-delta="2">+2</button>
+                <button data-team="${t.id}" data-delta="3">+3</button>
+                <button data-team="${t.id}" data-delta="-1">-1</button>
             </div>
             <div class="lockout ${locked.has(t.id) ? "err" : "muted"}">
               ${locked.has(t.id) ? "LOCKED OUT this round" : "Not locked out"}
