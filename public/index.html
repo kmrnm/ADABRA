@@ -5,108 +5,65 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ADABRA</title>
     <style>
-      body { font-family: system-ui, -apple-system, Arial; padding: 24px; }
-      .row { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; }
-      input { padding: 10px; font-size: 16px; width: 160px; text-transform: uppercase; }
-      button { padding: 10px 14px; font-size: 16px; cursor: pointer; }
-      #buzz { font-size: 22px; padding: 18px 24px; }
-      .card { border: 1px solid #ddd; border-radius: 10px; padding: 14px; max-width: 520px; }
+      body { font-family: system-ui, -apple-system, Arial; margin: 0; padding: 0; }
+      .wrap { max-width: 980px; margin: 0 auto; padding: 48px 20px; }
+      .hero { border: 1px solid #e6e6e6; border-radius: 14px; padding: 24px; }
+      h1 { margin: 0 0 10px 0; font-size: 40px; }
+      p { color: #444; line-height: 1.5; }
+      .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-top: 18px; }
+      a.button, button { display: inline-block; padding: 12px 16px; border-radius: 10px; border: 1px solid #ddd; text-decoration: none; cursor: pointer; background: #fff; font-size: 16px; }
+      input { padding: 12px; border-radius: 10px; border: 1px solid #ddd; font-size: 16px; text-transform: uppercase; width: 160px; }
+      .cards { display: grid; grid-template-columns: repeat(3, minmax(220px, 1fr)); gap: 12px; margin-top: 18px; }
+      .card { border: 1px solid #eee; border-radius: 14px; padding: 16px; }
       .muted { color: #666; }
-      .ok { color: #0a7; }
-      .err { color: #c00; }
-      code { background: #f6f6f6; padding: 2px 6px; border-radius: 6px; }
+      .small { font-size: 13px; color: #666; }
     </style>
   </head>
-
   <body>
-    <h1>ADABRA</h1>
+    <div class="wrap">
+      <div class="hero">
+        <h1>ADABRA</h1>
+        <p>
+          Real-time classroom buzzer system inspired by “Brain Ring”.
+          Paper-first: the host reads questions from paper, ADABRA handles timing, buzzing, and scoring.
+        </p>
 
-    <div class="card">
-      <div class="row">
-        <button id="createRoom">Create Room</button>
-        <span class="muted">Creates a new room code on the server.</span>
+        <div class="row">
+          <a class="button" href="/host">Host a game</a>
+
+          <input id="room" placeholder="ROOM" maxlength="6" />
+          <button id="join">Join room</button>
+        </div>
+
+        <div class="small" style="margin-top: 10px;">
+          Tip: the host will share a room code or link. No sign-up required for players.
+        </div>
       </div>
 
-      <div class="row">
-        <input id="roomCode" placeholder="ROOM CODE" maxlength="6" />
-        <button id="joinRoom">Join Room</button>
-      </div>
-
-      <p>
-        Current room:
-        <strong id="currentRoom" class="muted">none</strong>
-        <span id="members" class="muted"></span>
-      </p>
-
-      <p id="msg" class="muted"></p>
-
-      <div class="row">
-        <button id="buzz" disabled>BUZZ</button>
+      <div class="cards">
+        <div class="card">
+          <strong>1) Host creates a room</strong>
+          <div class="muted" style="margin-top: 6px;">Share the player link or room code with teams.</div>
+        </div>
+        <div class="card">
+          <strong>2) Teams join and select team</strong>
+          <div class="muted" style="margin-top: 6px;">Team selection is locked per device (refresh-safe).</div>
+        </div>
+        <div class="card">
+          <strong>3) Beep starts the round</strong>
+          <div class="muted" style="margin-top: 6px;">First buzz locks the round; host marks correct/incorrect.</div>
+        </div>
       </div>
     </div>
 
-    <script src="/socket.io/socket.io.js"></script>
     <script>
-      const socket = io();
-
-      const createRoomBtn = document.getElementById("createRoom");
-      const joinRoomBtn = document.getElementById("joinRoom");
-      const roomCodeInput = document.getElementById("roomCode");
-      const currentRoomEl = document.getElementById("currentRoom");
-      const membersEl = document.getElementById("members");
-      const msgEl = document.getElementById("msg");
-      const buzzBtn = document.getElementById("buzz");
-
-      function setMsg(text, type = "muted") {
-        msgEl.className = type;
-        msgEl.textContent = text;
-      }
-
-      createRoomBtn.onclick = async () => {
-        setMsg("Creating room...", "muted");
-        try {
-          const res = await fetch("/api/rooms/create");
-          const data = await res.json();
-          roomCodeInput.value = data.roomCode;
-          setMsg(`Room created: ${data.roomCode}. Now click Join Room.`, "ok");
-        } catch (e) {
-          setMsg("Failed to create room.", "err");
-        }
+      const room = document.getElementById("room");
+      const join = document.getElementById("join");
+      join.onclick = () => {
+        const code = (room.value || "").trim().toUpperCase();
+        if (!code) return;
+        location.href = `/play?room=${encodeURIComponent(code)}`;
       };
-
-      joinRoomBtn.onclick = () => {
-        const roomCode = (roomCodeInput.value || "").trim().toUpperCase();
-        if (!roomCode) {
-          setMsg("Please enter a room code.", "err");
-          return;
-        }
-        socket.emit("joinRoom", { roomCode });
-      };
-
-      buzzBtn.onclick = () => {
-        socket.emit("buzz");
-      };
-
-      socket.on("joinedRoom", ({ roomCode }) => {
-        currentRoomEl.textContent = roomCode;
-        currentRoomEl.className = "ok";
-        buzzBtn.disabled = false;
-        setMsg(`Joined room ${roomCode}. Buzz is active.`, "ok");
-      });
-
-      socket.on("roomInfo", ({ roomCode, membersCount }) => {
-        if (currentRoomEl.textContent === roomCode) {
-          membersEl.textContent = ` • members: ${membersCount}`;
-        }
-      });
-
-      socket.on("buzzed", ({ by, roomCode }) => {
-        setMsg(`BUZZED in ${roomCode} by ${by}`, "ok");
-      });
-
-      socket.on("errorMsg", (text) => {
-        setMsg(text, "err");
-      });
     </script>
   </body>
 </html>
