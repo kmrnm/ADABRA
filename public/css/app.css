@@ -377,3 +377,29 @@ input:focus, select:focus {
   color: rgba(255,255,255,.92);
   outline: none;
 }
+
+/* ===== Host big timer ===== */
+.timeHero{
+  width: 100%;
+  border-radius: 16px;
+  padding: 14px 16px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.05);
+  box-shadow: 0 12px 34px rgba(0,0,0,.22);
+}
+
+.timeHeroLabel{
+  font-weight: 700;
+  letter-spacing: .3px;
+  margin-bottom: 6px;
+}
+
+.timeHeroValue{
+  font-size: 44px;
+  font-weight: 900;
+  letter-spacing: .6px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  min-width: 200px; /* prevents width jitter */
+  display: inline-block;
+}

@@ -26,7 +26,7 @@
                     </div>
 
                     <div class="row">
-                        <div>
+                        <div id="roomCodeWrap" style="display:none;">
                             <div class="muted">Room code</div>
                             <div id="roomCode" class="code muted">—</div>
                         </div>
@@ -34,13 +34,18 @@
                         <div class="pill">Round: <strong id="round" class="muted">0</strong></div>
                         <div class="pill">Phase: <strong id="phase" class="muted">—</strong></div>
                         <div class="pill">Members: <strong id="members" class="muted">0</strong></div>
-                        <div class="pill">Time: <strong id="time" class="muted">00:00.0</strong></div>
                         <div class="pill">Running: <strong id="running" class="muted">no</strong></div>
+                    </div>
+                    <div class="row">
+                        <div class="timeHero">
+                            <div class="muted timeHeroLabel">Time left</div>
+                            <div id="time" class="timeHeroValue">00:00.0</div>
+                        </div>
                     </div>
 
                     <div class="row">
                         <div style="flex: 1;">
-                            <div class="muted">Player link</div>
+                            <div class="muted">Game link</div>
                             <input id="playerLink" readonly style="width: 560px;" />
                         </div>
                     </div>
@@ -61,24 +66,24 @@
                     </div>
 
                     <div class="kvGrid">
-  <div class="kvLabel">Teams</div>
-  <div class="kvField">
-    <select id="teamCount" class="field">
-      <option value="2">2</option>
-      <option value="3">3</option>
-      <option value="4">4</option>
-      <option value="5">5</option>
-      <option value="6">6</option>
-    </select>
-    <button id="applyTeams" class="btn">Increase teams</button>
-  </div>
+                        <div class="kvLabel">Teams</div>
+                        <div class="kvField">
+                            <select id="teamCount" class="field">
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                                <option value="4">4</option>
+                                <option value="5">5</option>
+                                <option value="6">6</option>
+                            </select>
+                            <button id="applyTeams" class="btn">Increase teams</button>
+                        </div>
 
-  <div class="kvLabel">Duration (sec)</div>
-  <div class="kvField">
-    <input id="duration" class="field" type="number" min="1" max="600" step="1" value="15" />
-    <button id="setDuration" class="btn">Set</button>
-  </div>
-</div>
+                        <div class="kvLabel">Duration (sec)</div>
+                        <div class="kvField">
+                            <input id="duration" class="field" type="number" min="1" max="600" step="1" value="15" />
+                            <button id="setDuration" class="btn">Set</button>
+                        </div>
+                    </div>
 
 
                     <div class="row">
