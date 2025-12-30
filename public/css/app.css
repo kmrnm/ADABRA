@@ -22,9 +22,9 @@
 
 /* Time pill has a fixed width (prevents layout jitter) */
 #time {
-  display: inline-block;
-  min-width: 78px;
-  text-align: right;
+  display: block;
+  width: 100%;
+  text-align: center;
   font-variant-numeric: tabular-nums;
 }
 
@@ -99,6 +99,25 @@ a { color: inherit; }
   border-radius: 999px;
   background: rgba(255, 255, 255, .04);
 }
+
+/* ===== Fixed-size host status pills (Timer & Last Buzz) ===== */
+.pillBig {
+  min-width: 220px;      /* lock width */
+  height: 64px;          /* lock height */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-variant-numeric: tabular-nums;
+}
+
+.hostTimer {
+  font-size: 34px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  line-height: 1;
+}
+
 
 .muted { color: var(--muted); }
 .ok { color: var(--ok); }

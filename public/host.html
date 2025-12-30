@@ -36,10 +36,13 @@
                         <div class="pill">Members: <strong id="members" class="muted">0</strong></div>
                         <div class="pill">Running: <strong id="running" class="muted">no</strong></div>
                     </div>
-                    <div class="row">
-                        <div class="timeHero">
-                            <div class="muted timeHeroLabel">Time left</div>
-                            <div id="time" class="timeHeroValue">00:00.0</div>
+                    <div class="row" style="gap:14px;">
+                        <div class="pill pillBig" style="flex:1; justify-content:center;">
+                            <strong id="time" class="hostTimer">00:15.0</strong>
+                        </div>
+
+                        <div class="pill pillBig" style="flex:1; justify-content:center;">
+                            <strong id="lastBuzz" class="muted">—</strong>
                         </div>
                     </div>
 
@@ -58,13 +61,16 @@
                             <button id="beepStart" class="btn btn-start">🚀 START</button>
                             <button id="pauseTimer" class="btn btn-warn">⏸ Pause</button>
                         </div>
-
+                        <hr />
+                        <div class="muted" style="text-align:center; margin-bottom:6px;">
+                            Judge the answer
+                        </div>
                         <div class="controlsBottom">
                             <button id="incorrect" class="btn btn-danger btn-round">✕</button>
                             <button id="correct" class="btn btn-success btn-round">✓</button>
                         </div>
                     </div>
-
+                    <hr />
                     <div class="kvGrid">
                         <div class="kvLabel">Teams</div>
                         <div class="kvField">
@@ -83,12 +89,6 @@
                             <input id="duration" class="field" type="number" min="1" max="600" step="1" value="15" />
                             <button id="setDuration" class="btn">Set</button>
                         </div>
-                    </div>
-
-
-                    <div class="row">
-                        <span class="muted">Last buzz:</span>
-                        <strong id="lastBuzz" class="muted">—</strong>
                     </div>
 
                 </div> <!-- /hostLeft -->
@@ -144,6 +144,24 @@
             statusEl.className = cls;
             statusEl.textContent = text;
         }
+
+        function showRoomCodeStatus() {
+            if (currentRoom) {
+                setStatus(`Room: ${currentRoom}`, "ok");
+            } else {
+                setStatus("Ready.", "muted");
+            }
+        }
+
+        playerLinkEl.onclick = async () => {
+            try {
+                await navigator.clipboard.writeText(playerLinkEl.value);
+                setStatus("Link copied to clipboard.", "ok");
+                setTimeout(showRoomCodeStatus, 900);
+            } catch {
+                setStatus("Copy failed. Copy manually.", "err");
+            }
+        };
 
         function formatMs(ms) {
             const m = Math.floor(ms / 60000);
@@ -223,21 +241,20 @@
                 playerLinkEl.style.cursor = "copy";
                 playerLinkEl.title = "Click to copy";
 
-                playerLinkEl.addEventListener("click", async () => {
-                    if (!playerLinkEl.value) return;
+                playerLinkEl.onclick = async () => {
                     try {
                         await navigator.clipboard.writeText(playerLinkEl.value);
-                        setStatus("Player link copied.", "ok");
-                        setTimeout(() => setStatus("Ready.", "muted"), 800);
+                        setStatus("Link copied to clipboard.", "ok");
+                        setTimeout(showRoomCodeStatus, 900);
                     } catch {
                         setStatus("Copy failed. Copy manually.", "err");
                     }
-                });
-
+                };
 
                 socket.emit("joinRoom", { roomCode: currentRoom, hostKey });
 
-                setStatus(`Room created: ${currentRoom}`, "ok");
+                showRoomCodeStatus();
+
             } catch (e) {
                 console.error(e);
                 setStatus("Failed to create a room.", "err");
