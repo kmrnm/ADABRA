@@ -51,6 +51,9 @@ function createRoom() {
     createdAt: Date.now(),
     membersCount: 0,
 
+    teamTaken: new Map(),
+    teamNameLocked: new Set(), // teamId: can rename only once per session
+
     // round state
     phase: "lobby", // "lobby" | "armed" | "locked"
     roundNumber: 0,
@@ -75,8 +78,6 @@ function createRoom() {
 
     // persistent player identity for team choice (refresh-safe)
     playerTeams: new Map(), // playerId -> teamId
-
-    teamTaken: new Map()
   });
 
   return { roomCode, hostKey };
@@ -103,6 +104,7 @@ function publicRoomState(room) {
     teams: Object.values(room.teams).map(t => ({ id: t.id, name: t.name, score: t.score })),
 
     takenTeams: Array.from(room.teamTaken.entries()).map(([teamId, playerId]) => ({ teamId, playerId })),
+    teamNameLocked: Array.from(room.teamNameLocked),
   };
 }
 
@@ -246,6 +248,42 @@ io.on("connection", (socket) => {
     socket.emit("teamSet", { teamId: requested, locked: true });
     emitRoomState(room.roomCode);
   });
+
+  socket.on("setTeamName", ({ name } = {}) => {
+    const room = requireRoom(socket);
+    if (!room) return;
+
+    if (socket.data.isHost) return socket.emit("errorMsg", "Host cannot set team name.");
+
+    const teamId = socket.data.teamId;
+    if (!teamId) return socket.emit("errorMsg", "Choose a team first.");
+
+    // Must own the team (unique per device)
+    const playerId = socket.data.playerId;
+    const takenBy = room.teamTaken.get(teamId);
+    if (!playerId || takenBy !== playerId) {
+      return socket.emit("errorMsg", "You do not own this team.");
+    }
+
+    // Only once per session
+    if (room.teamNameLocked.has(teamId)) {
+      return socket.emit("errorMsg", "Team name can be changed only once per session.");
+    }
+
+    // Validate name
+    const cleaned = String(name || "").trim();
+    if (cleaned.length < 2 || cleaned.length > 16) {
+      return socket.emit("errorMsg", "Team name must be 2–16 characters.");
+    }
+    // Very simple sanitization
+    const safe = cleaned.replace(/\s+/g, " ");
+
+    room.teams[teamId].name = safe;
+    room.teamNameLocked.add(teamId);
+
+    emitRoomState(room.roomCode); // immediately updates host + all players
+  });
+
 
   // Host: increase team count (2..6) - only increases, doesn’t reset scores
   socket.on("hostSetTeamCount", ({ count } = {}) => {

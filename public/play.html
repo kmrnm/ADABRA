@@ -110,7 +110,17 @@
     <div class="row">
       <div class="muted">Choose team (only once):</div>
     </div>
+
     <div id="teams" class="teams"></div>
+
+    <div id="nameBox" style="display:none; margin-top: 10px;">
+      <div class="muted">Set your team name (one time):</div>
+      <div class="row">
+        <input id="teamNameInput" placeholder="e.g. Avengers" maxlength="16"
+          style="width: 260px; text-transform:none;" />
+        <button id="saveTeamName">Save</button>
+      </div>
+    </div>
 
     <p id="msg" class="muted">Join a room, select your team, then wait for the beep.</p>
 
@@ -138,6 +148,10 @@
     const phaseEl = document.getElementById("phase");
     const timeEl = document.getElementById("time");
     const myScoreEl = document.getElementById("myScore");
+
+    const nameBox = document.getElementById("nameBox");
+    const teamNameInput = document.getElementById("teamNameInput");
+    const saveTeamNameBtn = document.getElementById("saveTeamName");
 
     const msgEl = document.getElementById("msg");
     const buzzBtn = document.getElementById("buzz");
@@ -328,6 +342,10 @@
       socket.emit("buzz");
     };
 
+    saveTeamNameBtn.onclick = () => {
+      const name = teamNameInput.value;
+      socket.emit("setTeamName", { name });
+    };
 
     socket.on("beep", () => {
       // new round start clears sticky “locked out” etc.
@@ -401,6 +419,17 @@
 
       const chosenTeam = getSavedTeam(currentRoom) || (teamEl.textContent !== "none" ? teamEl.textContent : null);
       renderTeamButtons(state.teams, chosenTeam, state.takenTeams, playerId);
+
+      // TEAM NAME BOX SHOW/HIE
+      const lockedNames = new Set(state.teamNameLocked || []);
+      const takenMap = new Map((state.takenTeams || []).map(x => [x.teamId, x.playerId]));
+      const iOwnThisTeam = chosenTeam && takenMap.get(chosenTeam) === playerId;
+
+      if (chosenTeam && iOwnThisTeam && !lockedNames.has(chosenTeam)) {
+        nameBox.style.display = "block";
+      } else {
+        nameBox.style.display = "none";
+      }
 
       updateMyScore();
       updateBuzzAvailability();
