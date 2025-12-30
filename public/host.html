@@ -17,73 +17,78 @@
 
         <!--<h1>Host</h1>-->
         <div class="card">
+            <div class="hostSplit">
+                <div class="hostLeft">
 
-            <div class="row">
-                <button id="create" class="btn">Create New Room</button>
-                <span id="status" class="muted">Ready.</span>
-            </div>
+                    <div class="row">
+                        <button id="create" class="btn">Create New Room</button>
+                        <span id="status" class="muted">Ready.</span>
+                    </div>
 
-            <div class="row">
-                <div>
-                    <div class="muted">Room code</div>
-                    <div id="roomCode" class="code muted">—</div>
+                    <div class="row">
+                        <div>
+                            <div class="muted">Room code</div>
+                            <div id="roomCode" class="code muted">—</div>
+                        </div>
+
+                        <div class="pill">Round: <strong id="round" class="muted">0</strong></div>
+                        <div class="pill">Phase: <strong id="phase" class="muted">—</strong></div>
+                        <div class="pill">Members: <strong id="members" class="muted">0</strong></div>
+                        <div class="pill">Time: <strong id="time" class="muted">00:00.0</strong></div>
+                        <div class="pill">Running: <strong id="running" class="muted">no</strong></div>
+                    </div>
+
+                    <div class="row">
+                        <div style="flex: 1;">
+                            <div class="muted">Player link</div>
+                            <input id="playerLink" readonly style="width: 560px;" />
+                        </div>
+                        <button id="copy" class="btn">Copy Link</button>
+                    </div>
+
+                    <hr />
+
+                    <div class="row">
+                        <button id="nextRound" class="btn">Next Round (Reset)</button>
+                        <button id="beepStart" class="btn">Beep (Start Round)</button>
+                        <button id="pauseTimer" class="btn">Pause Timer</button>
+                    </div>
+
+                    <div class="row">
+                        <button id="incorrect" class="btn">Incorrect (Lock out team)</button>
+                        <button id="correct" class="btn">Correct (+1 and end round)</button>
+                    </div>
+
+                    <div class="row">
+                        <label class="muted">Teams</label>
+                        <select id="teamCount">
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                            <option value="5">5</option>
+                            <option value="6">6</option>
+                        </select>
+                        <button id="applyTeams" class="btn">Increase teams</button>
+
+                        <span style="width: 18px;"></span>
+
+                        <label class="muted">Duration (sec)</label>
+                        <input id="duration" type="number" min="1" max="600" step="1" value="15" style="width: 90px;" />
+                        <button id="setDuration" class="btn">Set</button>
+                    </div>
+
+                    <div class="row">
+                        <span class="muted">Last buzz:</span>
+                        <strong id="lastBuzz" class="muted">—</strong>
+                    </div>
+
+                </div> <!-- /hostLeft -->
+
+                <div class="hostRight">
+                    <h2 style="margin: 0 0 8px 0;">Scoreboard</h2>
+                    <div id="scoreboard" class="grid"></div>
                 </div>
-
-                <div class="pill">Round: <strong id="round" class="muted">0</strong></div>
-                <div class="pill">Phase: <strong id="phase" class="muted">—</strong></div>
-                <div class="pill">Members: <strong id="members" class="muted">0</strong></div>
-                <div class="pill">Time: <strong id="time" class="muted">00:00.0</strong></div>
-                <div class="pill">Running: <strong id="running" class="muted">no</strong></div>
-            </div>
-
-            <div class="row">
-                <div style="flex: 1;">
-                    <div class="muted">Player link</div>
-                    <input id="playerLink" readonly style="width: 560px;" />
-                </div>
-                <button id="copy" class="btn">Copy Link</button>
-            </div>
-
-            <hr />
-
-            <div class="row">
-                <button id="nextRound" class="btn">Next Round (Reset)</button>
-                <button id="beepStart" class="btn">Beep (Start Round)</button>
-                <button id="pauseTimer" class="btn">Pause Timer</button>
-            </div>
-
-            <div class="row">
-                <button id="incorrect" class="btn">Incorrect (Lock out team)</button>
-                <button id="correct" class="btn">Correct (+1 and end round)</button>
-            </div>
-
-            <div class="row">
-                <label class="muted">Teams</label>
-                <select id="teamCount">
-                    <option value="2">2</option>
-                    <option value="3">3</option>
-                    <option value="4">4</option>
-                    <option value="5">5</option>
-                    <option value="6">6</option>
-                </select>
-                <button id="applyTeams" class="btn">Increase teams</button>
-
-                <span style="width: 18px;"></span>
-
-                <label class="muted">Duration (sec)</label>
-                <input id="duration" type="number" min="1" max="600" step="1" value="15" style="width: 90px;" />
-                <button id="setDuration" class="btn">Set</button>
-            </div>
-
-            <div class="row">
-                <span class="muted">Last buzz:</span>
-                <strong id="lastBuzz" class="muted">—</strong>
-            </div>
-
-            <hr />
-
-            <h2 style="margin: 0 0 8px 0;">Scoreboard</h2>
-            <div id="scoreboard" class="grid"></div>
+            </div> <!-- /hostSplit -->
         </div>
     </div>
 
@@ -157,23 +162,29 @@
                 const isTaken = takenMap.has(String(t.id));
 
                 card.innerHTML = `
+                <div class="teamHead">
+                    <div class="teamMeta">
                     <div class="teamTitle">${t.name}</div>
-                    <div class="muted" style="margin-top:2px;">
-                        Table chosen: <strong class="${isTaken ? "ok" : "muted"}">${isTaken ? "Yes" : "No"}</strong>
+                    <div class="muted">
+                        Table chosen:
+                        <strong class="${isTaken ? "ok" : "muted"}">${isTaken ? "Yes" : "No"}</strong>
+                    </div>
+                    <div class="lockout ${locked.has(t.id) ? "err" : "muted"}">
+                        ${locked.has(t.id) ? "LOCKED OUT this round" : ""}
+                    </div>
                     </div>
 
+                    <div class="teamRight">
                     <div class="score">${t.score}</div>
-
-                    <div class="row">
+                    <div class="scoreBtns">
                         <button class="btn" data-team="${t.id}" data-delta="1">+1</button>
                         <button class="btn" data-team="${t.id}" data-delta="2">+2</button>
                         <button class="btn" data-team="${t.id}" data-delta="3">+3</button>
                         <button class="btn" data-team="${t.id}" data-delta="-1">-1</button>
                     </div>
-
-                    <div class="lockout ${locked.has(t.id) ? "err" : "muted"}" style="margin-top:8px;">
-                        ${locked.has(t.id) ? "LOCKED OUT this round" : "Not locked out"}
-                    </div>`;
+                    </div>
+                </div>
+                `;
 
                 card.querySelectorAll("button").forEach(btn => {
                     btn.onclick = () => {

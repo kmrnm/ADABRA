@@ -153,3 +153,90 @@ input:focus, select:focus{
 @media (max-width: 900px){
   .grid-3{ grid-template-columns: 1fr; }
 }
+
+/* ===== Host split layout ===== */
+.hostSplit{
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 18px;
+  align-items: start;
+}
+
+.hostRight{
+  position: sticky;
+  top: 18px;
+  max-height: calc(100vh - 140px);
+  overflow: auto;
+  padding-right: 6px;
+}
+
+/* Scoreboard vertical list */
+.hostRight .grid{
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+/* ===== Host scoreboard compact + glass ===== */
+
+.teamCard{
+  border-radius: 16px;
+  padding: 14px 14px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.06);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.18);
+}
+
+.teamHead{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.teamMeta{
+  min-width: 0;
+}
+
+.teamTitle{
+  font-weight: 800;
+  font-size: 16px;
+  line-height: 1.2;
+  margin-bottom: 4px;
+}
+
+.teamRight{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.score{
+  font-size: 28px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  min-width: 44px;
+  text-align: right;
+}
+
+.scoreBtns{
+  display: flex;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+.scoreBtns .btn{
+  padding: 8px 10px;
+  font-size: 14px;
+  border-radius: 12px;
+}
+
+.lockout{
+  margin-top: 6px;
+  font-size: 12px;
+  opacity: 0.9;
+}
