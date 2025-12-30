@@ -1,138 +1,141 @@
 <!DOCTYPE html>
 <html>
+
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ADABRA</title>
-  <link rel="stylesheet" href="/css/app.css" />
-  <link rel="stylesheet" href="/css/screen.css" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ADABRA</title>
+    <link rel="stylesheet" href="/css/app.css" />
+    <link rel="stylesheet" href="/css/screen.css" />
 </head>
 
 <body class="screen">
-  <div class="container">
-    <div class="topbar">
-      <div class="brand"><span class="brand-dot"></span>ADABRA</div>
-      <div class="muted">Spectator Screen</div>
+    <div class="container">
+        <div class="topbar">
+            <div class="brand"><span class="brand-dot"></span>ADABRA</div>
+            <div class="muted">Spectator Screen</div>
+        </div>
+
+        <div class="card screenCard">
+            <div class="screenHeader">
+                <div class="roomBlock">
+                    <div class="muted">Room</div>
+                    <div id="roomCode" class="screenRoom">—</div>
+                </div>
+
+                <div class="phaseBlock">
+                    <div class="muted">Round</div>
+                    <div id="round" class="screenPhase">0</div>
+                </div>
+
+
+                <div class="timerBlock">
+                    <div class="muted">Time</div>
+                    <div id="time" class="screenTime">00:00.0</div>
+                </div>
+            </div>
+
+            <div id="lockedBanner" class="lockedBanner" style="display:none;">
+                —
+            </div>
+
+            <div class="screenBody">
+                <div class="screenCol">
+                    <div class="muted" style="font-weight:900; letter-spacing:.4px;">Scoreboard</div>
+                    <div id="scoreboard" class="screenScoreboard"></div>
+                </div>
+
+                <div class="screenCol rightCol">
+                    <div class="muted" style="font-weight:900; letter-spacing:.4px;">Last buzz</div>
+                    <div id="lastBuzz" class="lastBuzzBig">—</div>
+
+                    <div class="muted" style="margin-top:14px;">Tip</div>
+                    <div class="tipText">Players open: <strong>/play</strong> and enter room code.</div>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <div class="card screenCard">
-      <div class="screenHeader">
-        <div class="roomBlock">
-          <div class="muted">Room</div>
-          <div id="roomCode" class="screenRoom">—</div>
-        </div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
 
-        <div class="phaseBlock">
-          <div class="muted">Phase</div>
-          <div id="phase" class="screenPhase">—</div>
-        </div>
+        const roomCodeEl = document.getElementById("roomCode");
+        const roundEl = document.getElementById("round");
+        const timeEl = document.getElementById("time");
+        const lastBuzzEl = document.getElementById("lastBuzz");
+        const lockedBannerEl = document.getElementById("lockedBanner");
+        const scoreboardEl = document.getElementById("scoreboard");
 
-        <div class="timerBlock">
-          <div class="muted">Time</div>
-          <div id="time" class="screenTime">00:00.0</div>
-        </div>
-      </div>
+        let currentRoom = null;
 
-      <div id="lockedBanner" class="lockedBanner" style="display:none;">
-        —
-      </div>
+        function formatMs(ms) {
+            const m = Math.floor(ms / 60000);
+            const s = Math.floor((ms % 60000) / 1000);
+            const t = Math.floor((ms % 1000) / 100);
+            return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}.${t}`;
+        }
 
-      <div class="screenBody">
-        <div class="screenCol">
-          <div class="muted" style="font-weight:900; letter-spacing:.4px;">Scoreboard</div>
-          <div id="scoreboard" class="screenScoreboard"></div>
-        </div>
+        function getQueryRoom() {
+            const params = new URLSearchParams(location.search);
+            const r = params.get("room");
+            return r ? r.trim().toUpperCase() : "";
+        }
 
-        <div class="screenCol rightCol">
-          <div class="muted" style="font-weight:900; letter-spacing:.4px;">Last buzz</div>
-          <div id="lastBuzz" class="lastBuzzBig">—</div>
+        function teamNameFromState(state, teamId) {
+            const t = (state.teams || []).find(x => String(x.id) === String(teamId));
+            return t ? t.name : `Team ${teamId}`;
+        }
 
-          <div class="muted" style="margin-top:14px;">Tip</div>
-          <div class="tipText">Players open: <strong>/play</strong> and enter room code.</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <script src="/socket.io/socket.io.js"></script>
-  <script>
-    const socket = io();
-
-    const roomCodeEl = document.getElementById("roomCode");
-    const phaseEl = document.getElementById("phase");
-    const timeEl = document.getElementById("time");
-    const lastBuzzEl = document.getElementById("lastBuzz");
-    const lockedBannerEl = document.getElementById("lockedBanner");
-    const scoreboardEl = document.getElementById("scoreboard");
-
-    let currentRoom = null;
-
-    function formatMs(ms) {
-      const m = Math.floor(ms / 60000);
-      const s = Math.floor((ms % 60000) / 1000);
-      const t = Math.floor((ms % 1000) / 100);
-      return `${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}.${t}`;
-    }
-
-    function getQueryRoom() {
-      const params = new URLSearchParams(location.search);
-      const r = params.get("room");
-      return r ? r.trim().toUpperCase() : "";
-    }
-
-    function teamNameFromState(state, teamId) {
-      const t = (state.teams || []).find(x => String(x.id) === String(teamId));
-      return t ? t.name : `Team ${teamId}`;
-    }
-
-    function renderScoreboard(teams) {
-      scoreboardEl.innerHTML = "";
-      // sort by score desc
-      const sorted = [...(teams || [])].sort((a,b) => (b.score||0) - (a.score||0));
-      for (const t of sorted) {
-        const row = document.createElement("div");
-        row.className = "screenTeamRow";
-        row.innerHTML = `
+        function renderScoreboard(teams) {
+            scoreboardEl.innerHTML = "";
+            // sort by score desc
+            const sorted = [...(teams || [])].sort((a, b) => (b.score || 0) - (a.score || 0));
+            for (const t of sorted) {
+                const row = document.createElement("div");
+                row.className = "screenTeamRow";
+                row.innerHTML = `
           <div class="screenTeamName">${t.name}</div>
           <div class="screenTeamScore">${t.score}</div>
         `;
-        scoreboardEl.appendChild(row);
-      }
-    }
+                scoreboardEl.appendChild(row);
+            }
+        }
 
-    function joinRoom(roomCode) {
-      currentRoom = roomCode;
-      roomCodeEl.textContent = roomCode || "—";
-      if (!roomCode) return;
-      socket.emit("joinRoom", { roomCode }); // spectator is just a normal client (not host)
-    }
+        function joinRoom(roomCode) {
+            currentRoom = roomCode;
+            roomCodeEl.textContent = roomCode || "—";
+            if (!roomCode) return;
+            socket.emit("joinRoom", { roomCode }); // spectator is just a normal client (not host)
+        }
 
-    joinRoom(getQueryRoom());
+        joinRoom(getQueryRoom());
 
-    socket.on("roomState", (state) => {
-      if (!currentRoom || state.roomCode !== currentRoom) return;
+        socket.on("roomState", (state) => {
+            if (!currentRoom || state.roomCode !== currentRoom) return;
 
-      phaseEl.textContent = (state.phase || "—").toUpperCase();
-      timeEl.textContent = formatMs(state.remainingMs || 0);
+            roundEl.textContent = String(state.roundNumber ?? 0);
+            timeEl.textContent = formatMs(state.remainingMs || 0);
 
-      renderScoreboard(state.teams);
+            renderScoreboard(state.teams);
 
-      if (!state.lastBuzz) {
-        lastBuzzEl.textContent = "—";
-      } else {
-        const name = teamNameFromState(state, state.lastBuzz.teamId);
-        const isFirst = state.firstBuzzTeamId && String(state.firstBuzzTeamId) === String(state.lastBuzz.teamId);
-        lastBuzzEl.textContent = isFirst ? `${name} buzzed first` : `${name} buzzed`;
-      }
+            if (!state.lastBuzz) {
+                lastBuzzEl.textContent = "—";
+            } else {
+                const name = teamNameFromState(state, state.lastBuzz.teamId);
+                const isFirst = state.firstBuzzTeamId && String(state.firstBuzzTeamId) === String(state.lastBuzz.teamId);
+                lastBuzzEl.textContent = isFirst ? `${name} buzzed first` : `${name} buzzed`;
+            }
 
-      // LOCKED banner
-      if (state.phase === "locked" && state.lastBuzz) {
-        lockedBannerEl.style.display = "block";
-        lockedBannerEl.textContent = `LOCKED — ${teamNameFromState(state, state.lastBuzz.teamId)} answering`;
-      } else {
-        lockedBannerEl.style.display = "none";
-      }
-    });
-  </script>
+            // LOCKED banner
+            if (state.phase === "locked" && state.lastBuzz) {
+                lockedBannerEl.style.display = "block";
+                lockedBannerEl.textContent = `${teamNameFromState(state, state.lastBuzz.teamId)} answering`;
+            } else {
+                lockedBannerEl.style.display = "none";
+            }
+        });
+    </script>
 </body>
+
 </html>

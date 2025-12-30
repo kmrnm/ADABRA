@@ -50,9 +50,11 @@
 
                     <div class="row">
                         <div style="flex: 1;">
-                            <div class="muted">Game link</div>
-                            <input id="playerLink" readonly style="width: 560px;" />
+                            <div class="muted" style="margin-bottom: 14px;">Game link</div>
+                            <input id="playerLink" readonly style="width: 100%;" />
                         </div>
+
+                        <button id="openScreen" class="btn" style="width: 100%;">PRESENT</button>
                     </div>
 
                     <hr />
@@ -139,7 +141,11 @@
         const beepAudio = document.getElementById("beepAudio");
         const buzzAudio = document.getElementById("buzzAudio");
 
+        const openScreenBtn = document.getElementById("openScreen");
+
         let currentRoom = null;
+        openScreenBtn.disabled = true;
+
         let hostKey = null;
 
         function setStatus(text, cls = "muted") {
@@ -234,6 +240,8 @@
                 const data = await res.json();
 
                 currentRoom = data.roomCode;
+                openScreenBtn.disabled = false;
+
                 hostKey = data.hostKey;
 
                 roomCodeEl.textContent = currentRoom;
@@ -261,6 +269,15 @@
                 console.error(e);
                 setStatus("Failed to create a room.", "err");
             }
+        };
+
+        openScreenBtn.onclick = () => {
+            if (!currentRoom) return;
+            window.open(
+                `/screen?room=${encodeURIComponent(currentRoom)}`,
+                "_blank",
+                "noopener"
+            );
         };
 
         nextRoundBtn.onclick = () => socket.emit("hostNextRound");
