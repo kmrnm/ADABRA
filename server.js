@@ -156,7 +156,7 @@ setInterval(() => {
     room.remainingMs = Math.max(0, room.remainingMs - delta);
 
     if (room.remainingMs === 0) {
-      // time up ends the round -> back to lobby
+      io.to(room.roomCode).emit("timeUp");   // notify everyone
       resetToLobby(room);
     }
 

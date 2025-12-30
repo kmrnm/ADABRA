@@ -1,156 +1,232 @@
 <!DOCTYPE html>
 <html>
-  <head>
+
+<head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ADABRA • Host</title>
     <style>
-      body { font-family: system-ui, -apple-system, Arial; padding: 24px; }
-      .card { border: 1px solid #ddd; border-radius: 10px; padding: 16px; max-width: 1100px; }
-      .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 12px 0; }
-      button { padding: 10px 14px; font-size: 16px; cursor: pointer; }
-      input, select { padding: 10px; font-size: 16px; }
-      .code { font-size: 28px; letter-spacing: 3px; font-weight: 800; }
-      .muted { color: #666; }
-      .ok { color: #0a7; }
-      .err { color: #c00; }
-      .pill { display: inline-block; padding: 6px 10px; border: 1px solid #ddd; border-radius: 999px; }
-      #time { font-variant-numeric: tabular-nums; font-size: 20px; }
-      .grid { display: grid; grid-template-columns: repeat(3, minmax(220px, 1fr)); gap: 12px; }
-      .teamCard { border: 1px solid #eee; border-radius: 10px; padding: 12px; }
-      .teamTitle { font-weight: 800; font-size: 18px; }
-      .score { font-size: 30px; font-variant-numeric: tabular-nums; }
-      .lockout { font-size: 13px; }
+        body {
+            font-family: system-ui, -apple-system, Arial;
+            padding: 24px;
+        }
+
+        .card {
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            padding: 16px;
+            max-width: 1100px;
+        }
+
+        .row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+            margin: 12px 0;
+        }
+
+        button {
+            padding: 10px 14px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        input,
+        select {
+            padding: 10px;
+            font-size: 16px;
+        }
+
+        .code {
+            font-size: 28px;
+            letter-spacing: 3px;
+            font-weight: 800;
+        }
+
+        .muted {
+            color: #666;
+        }
+
+        .ok {
+            color: #0a7;
+        }
+
+        .err {
+            color: #c00;
+        }
+
+        .pill {
+            display: inline-block;
+            padding: 6px 10px;
+            border: 1px solid #ddd;
+            border-radius: 999px;
+        }
+
+        #time {
+            font-variant-numeric: tabular-nums;
+            font-size: 20px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(220px, 1fr));
+            gap: 12px;
+        }
+
+        .teamCard {
+            border: 1px solid #eee;
+            border-radius: 10px;
+            padding: 12px;
+        }
+
+        .teamTitle {
+            font-weight: 800;
+            font-size: 18px;
+        }
+
+        .score {
+            font-size: 30px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .lockout {
+            font-size: 13px;
+        }
     </style>
-  </head>
-  <body>
+</head>
+
+<body>
     <h1>ADABRA • Host</h1>
 
     <div class="card">
-      <div class="row">
-        <button id="create">Create New Room</button>
-        <span id="status" class="muted">Ready.</span>
-      </div>
-
-      <div class="row">
-        <div>
-          <div class="muted">Room code</div>
-          <div id="roomCode" class="code muted">—</div>
+        <div class="row">
+            <button id="create">Create New Room</button>
+            <span id="status" class="muted">Ready.</span>
         </div>
 
-        <div class="pill">Round: <strong id="round" class="muted">0</strong></div>
-        <div class="pill">Phase: <strong id="phase" class="muted">—</strong></div>
-        <div class="pill">Members: <strong id="members" class="muted">0</strong></div>
-        <div class="pill">Time: <strong id="time" class="muted">00:00.0</strong></div>
-        <div class="pill">Running: <strong id="running" class="muted">no</strong></div>
-      </div>
+        <div class="row">
+            <div>
+                <div class="muted">Room code</div>
+                <div id="roomCode" class="code muted">—</div>
+            </div>
 
-      <div class="row">
-        <div style="flex: 1;">
-          <div class="muted">Player link</div>
-          <input id="playerLink" readonly style="width: 560px;" />
+            <div class="pill">Round: <strong id="round" class="muted">0</strong></div>
+            <div class="pill">Phase: <strong id="phase" class="muted">—</strong></div>
+            <div class="pill">Members: <strong id="members" class="muted">0</strong></div>
+            <div class="pill">Time: <strong id="time" class="muted">00:00.0</strong></div>
+            <div class="pill">Running: <strong id="running" class="muted">no</strong></div>
         </div>
-        <button id="copy">Copy Link</button>
-      </div>
 
-      <hr />
+        <div class="row">
+            <div style="flex: 1;">
+                <div class="muted">Player link</div>
+                <input id="playerLink" readonly style="width: 560px;" />
+            </div>
+            <button id="copy">Copy Link</button>
+        </div>
 
-      <div class="row">
-        <button id="nextRound">Next Round (Reset)</button>
-        <button id="beepStart">Beep (Start Round)</button>
-        <button id="pauseTimer">Pause Timer</button>
-      </div>
+        <hr />
 
-      <div class="row">
-        <button id="incorrect">Incorrect (Lock out team)</button>
-        <button id="correct">Correct (+1 and end round)</button>
-      </div>
+        <div class="row">
+            <button id="nextRound">Next Round (Reset)</button>
+            <button id="beepStart">Beep (Start Round)</button>
+            <button id="pauseTimer">Pause Timer</button>
+        </div>
 
-      <div class="row">
-        <label class="muted">Teams</label>
-        <select id="teamCount">
-          <option value="2">2</option><option value="3">3</option><option value="4">4</option>
-          <option value="5">5</option><option value="6">6</option>
-        </select>
-        <button id="applyTeams">Increase teams</button>
+        <div class="row">
+            <button id="incorrect">Incorrect (Lock out team)</button>
+            <button id="correct">Correct (+1 and end round)</button>
+        </div>
 
-        <span style="width: 18px;"></span>
+        <div class="row">
+            <label class="muted">Teams</label>
+            <select id="teamCount">
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+                <option value="6">6</option>
+            </select>
+            <button id="applyTeams">Increase teams</button>
 
-        <label class="muted">Duration (sec)</label>
-        <input id="duration" type="number" min="1" max="600" step="1" value="15" style="width: 90px;" />
-        <button id="setDuration">Set</button>
-      </div>
+            <span style="width: 18px;"></span>
 
-      <div class="row">
-        <span class="muted">Last buzz:</span>
-        <strong id="lastBuzz" class="muted">—</strong>
-      </div>
+            <label class="muted">Duration (sec)</label>
+            <input id="duration" type="number" min="1" max="600" step="1" value="15" style="width: 90px;" />
+            <button id="setDuration">Set</button>
+        </div>
 
-      <hr />
+        <div class="row">
+            <span class="muted">Last buzz:</span>
+            <strong id="lastBuzz" class="muted">—</strong>
+        </div>
 
-      <h2 style="margin: 0 0 8px 0;">Scoreboard</h2>
-      <div id="scoreboard" class="grid"></div>
+        <hr />
+
+        <h2 style="margin: 0 0 8px 0;">Scoreboard</h2>
+        <div id="scoreboard" class="grid"></div>
     </div>
 
     <audio id="beepAudio" src="/sounds/beep.mp3" preload="auto"></audio>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
-      const socket = io();
+        const socket = io();
 
-      const createBtn = document.getElementById("create");
-      const statusEl = document.getElementById("status");
-      const roomCodeEl = document.getElementById("roomCode");
-      const playerLinkEl = document.getElementById("playerLink");
-      const copyBtn = document.getElementById("copy");
+        const createBtn = document.getElementById("create");
+        const statusEl = document.getElementById("status");
+        const roomCodeEl = document.getElementById("roomCode");
+        const playerLinkEl = document.getElementById("playerLink");
+        const copyBtn = document.getElementById("copy");
 
-      const roundEl = document.getElementById("round");
-      const phaseEl = document.getElementById("phase");
-      const membersEl = document.getElementById("members");
-      const timeEl = document.getElementById("time");
-      const runningEl = document.getElementById("running");
+        const roundEl = document.getElementById("round");
+        const phaseEl = document.getElementById("phase");
+        const membersEl = document.getElementById("members");
+        const timeEl = document.getElementById("time");
+        const runningEl = document.getElementById("running");
 
-      const nextRoundBtn = document.getElementById("nextRound");
-      const beepStartBtn = document.getElementById("beepStart");
-      const pauseTimerBtn = document.getElementById("pauseTimer");
-      const incorrectBtn = document.getElementById("incorrect");
-      const correctBtn = document.getElementById("correct");
+        const nextRoundBtn = document.getElementById("nextRound");
+        const beepStartBtn = document.getElementById("beepStart");
+        const pauseTimerBtn = document.getElementById("pauseTimer");
+        const incorrectBtn = document.getElementById("incorrect");
+        const correctBtn = document.getElementById("correct");
 
-      const teamCountSel = document.getElementById("teamCount");
-      const applyTeamsBtn = document.getElementById("applyTeams");
+        const teamCountSel = document.getElementById("teamCount");
+        const applyTeamsBtn = document.getElementById("applyTeams");
 
-      const durationInput = document.getElementById("duration");
-      const setDurationBtn = document.getElementById("setDuration");
+        const durationInput = document.getElementById("duration");
+        const setDurationBtn = document.getElementById("setDuration");
 
-      const lastBuzzEl = document.getElementById("lastBuzz");
-      const scoreboardEl = document.getElementById("scoreboard");
+        const lastBuzzEl = document.getElementById("lastBuzz");
+        const scoreboardEl = document.getElementById("scoreboard");
 
-      const beepAudio = document.getElementById("beepAudio");
+        const beepAudio = document.getElementById("beepAudio");
 
-      let currentRoom = null;
-      let hostKey = null;
+        let currentRoom = null;
+        let hostKey = null;
 
-      function setStatus(text, cls = "muted") {
-        statusEl.className = cls;
-        statusEl.textContent = text;
-      }
+        function setStatus(text, cls = "muted") {
+            statusEl.className = cls;
+            statusEl.textContent = text;
+        }
 
-      function formatMs(ms) {
-        const m = Math.floor(ms / 60000);
-        const s = Math.floor((ms % 60000) / 1000);
-        const t = Math.floor((ms % 1000) / 100);
-        return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}.${t}`;
-      }
+        function formatMs(ms) {
+            const m = Math.floor(ms / 60000);
+            const s = Math.floor((ms % 60000) / 1000);
+            const t = Math.floor((ms % 1000) / 100);
+            return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}.${t}`;
+        }
 
-      function renderScoreboard(teams, lockedOutTeams) {
-        const locked = new Set(lockedOutTeams || []);
-        scoreboardEl.innerHTML = "";
+        function renderScoreboard(teams, lockedOutTeams) {
+            const locked = new Set(lockedOutTeams || []);
+            scoreboardEl.innerHTML = "";
 
-        for (const t of teams) {
-          const card = document.createElement("div");
-          card.className = "teamCard";
+            for (const t of teams) {
+                const card = document.createElement("div");
+                card.className = "teamCard";
 
-          card.innerHTML = `
+                card.innerHTML = `
             <div class="teamTitle">${t.name} (ID ${t.id})</div>
             <div class="score">${t.score}</div>
             <div class="row">
@@ -164,95 +240,100 @@
             </div>
           `;
 
-          card.querySelectorAll("button").forEach(btn => {
-            btn.onclick = () => {
-              socket.emit("hostAdjustScore", {
-                teamId: btn.dataset.team,
-                delta: Number(btn.dataset.delta)
-              });
-            };
-          });
+                card.querySelectorAll("button").forEach(btn => {
+                    btn.onclick = () => {
+                        socket.emit("hostAdjustScore", {
+                            teamId: btn.dataset.team,
+                            delta: Number(btn.dataset.delta)
+                        });
+                    };
+                });
 
-          scoreboardEl.appendChild(card);
-        }
-      }
-
-      createBtn.onclick = async () => {
-        setStatus("Creating room...", "muted");
-        try {
-          const res = await fetch("/api/rooms/create");
-          const data = await res.json();
-
-          currentRoom = data.roomCode;
-          hostKey = data.hostKey;
-
-          roomCodeEl.textContent = currentRoom;
-          roomCodeEl.className = "code ok";
-
-          playerLinkEl.value = `${location.origin}/play?room=${encodeURIComponent(currentRoom)}`;
-
-          socket.emit("joinRoom", { roomCode: currentRoom, hostKey });
-
-          setStatus(`Room created: ${currentRoom}`, "ok");
-        } catch (e) {
-          console.error(e);
-          setStatus("Failed to create a room.", "err");
-        }
-      };
-
-      copyBtn.onclick = async () => {
-        try {
-          await navigator.clipboard.writeText(playerLinkEl.value);
-          setStatus("Player link copied.", "ok");
-          setTimeout(() => setStatus("Ready.", "muted"), 800);
-        } catch {
-          setStatus("Copy failed. Copy manually.", "err");
-        }
-      };
-
-      nextRoundBtn.onclick = () => socket.emit("hostNextRound");
-      beepStartBtn.onclick = () => socket.emit("hostBeepStart");
-      pauseTimerBtn.onclick = () => socket.emit("hostPauseTimer");
-      incorrectBtn.onclick = () => socket.emit("hostIncorrect");
-      correctBtn.onclick = () => socket.emit("hostCorrect");
-
-      applyTeamsBtn.onclick = () => socket.emit("hostSetTeamCount", { count: Number(teamCountSel.value) });
-      setDurationBtn.onclick = () => socket.emit("hostSetDuration", { seconds: Number(durationInput.value) });
-
-      socket.on("beep", () => {
-        beepAudio.currentTime = 0;
-        beepAudio.play().catch(() => {});
-      });
-
-      socket.on("errorMsg", (text) => setStatus(text, "err"));
-
-      socket.on("roomState", (state) => {
-        if (!currentRoom || state.roomCode !== currentRoom) return;
-
-        roundEl.textContent = String(state.roundNumber ?? 0);
-
-        phaseEl.textContent = state.phase;
-        phaseEl.className = state.phase === "armed" ? "ok" : "muted";
-
-        membersEl.textContent = String(state.membersCount);
-        timeEl.textContent = formatMs(state.remainingMs);
-
-        runningEl.textContent = state.timerRunning ? "yes" : "no";
-        runningEl.className = state.timerRunning ? "ok" : "muted";
-
-        teamCountSel.value = String(state.teams.length);
-        durationInput.value = String(Math.round(state.durationMs / 1000));
-
-        if (!state.lastBuzz) {
-          lastBuzzEl.textContent = "—";
-          lastBuzzEl.className = "muted";
-        } else {
-          lastBuzzEl.textContent = `Buzz by ${state.lastBuzz.by} (Team ${state.lastBuzz.teamId})`;
-          lastBuzzEl.className = "ok";
+                scoreboardEl.appendChild(card);
+            }
         }
 
-        renderScoreboard(state.teams, state.lockedOutTeams);
-      });
+        createBtn.onclick = async () => {
+            setStatus("Creating room...", "muted");
+            try {
+                const res = await fetch("/api/rooms/create");
+                const data = await res.json();
+
+                currentRoom = data.roomCode;
+                hostKey = data.hostKey;
+
+                roomCodeEl.textContent = currentRoom;
+                roomCodeEl.className = "code ok";
+
+                playerLinkEl.value = `${location.origin}/play?room=${encodeURIComponent(currentRoom)}`;
+
+                socket.emit("joinRoom", { roomCode: currentRoom, hostKey });
+
+                setStatus(`Room created: ${currentRoom}`, "ok");
+            } catch (e) {
+                console.error(e);
+                setStatus("Failed to create a room.", "err");
+            }
+        };
+
+        copyBtn.onclick = async () => {
+            try {
+                await navigator.clipboard.writeText(playerLinkEl.value);
+                setStatus("Player link copied.", "ok");
+                setTimeout(() => setStatus("Ready.", "muted"), 800);
+            } catch {
+                setStatus("Copy failed. Copy manually.", "err");
+            }
+        };
+
+        nextRoundBtn.onclick = () => socket.emit("hostNextRound");
+        beepStartBtn.onclick = () => socket.emit("hostBeepStart");
+        pauseTimerBtn.onclick = () => socket.emit("hostPauseTimer");
+        incorrectBtn.onclick = () => socket.emit("hostIncorrect");
+        correctBtn.onclick = () => socket.emit("hostCorrect");
+
+        applyTeamsBtn.onclick = () => socket.emit("hostSetTeamCount", { count: Number(teamCountSel.value) });
+        setDurationBtn.onclick = () => socket.emit("hostSetDuration", { seconds: Number(durationInput.value) });
+
+        socket.on("beep", () => {
+            beepAudio.currentTime = 0;
+            beepAudio.play().catch(() => { });
+        });
+
+        socket.on("timeUp", () => {
+            setStatus("Time is up.", "err");
+        });
+
+        socket.on("errorMsg", (text) => setStatus(text, "err"));
+
+        socket.on("roomState", (state) => {
+            if (!currentRoom || state.roomCode !== currentRoom) return;
+
+            roundEl.textContent = String(state.roundNumber ?? 0);
+
+            phaseEl.textContent = state.phase;
+            phaseEl.className = state.phase === "armed" ? "ok" : "muted";
+
+            membersEl.textContent = String(state.membersCount);
+            timeEl.textContent = formatMs(state.remainingMs);
+
+            runningEl.textContent = state.timerRunning ? "yes" : "no";
+            runningEl.className = state.timerRunning ? "ok" : "muted";
+
+            teamCountSel.value = String(state.teams.length);
+            durationInput.value = String(Math.round(state.durationMs / 1000));
+
+            if (!state.lastBuzz) {
+                lastBuzzEl.textContent = "—";
+                lastBuzzEl.className = "muted";
+            } else {
+                lastBuzzEl.textContent = `Buzz by ${state.lastBuzz.by} (Team ${state.lastBuzz.teamId})`;
+                lastBuzzEl.className = "ok";
+            }
+
+            renderScoreboard(state.teams, state.lockedOutTeams);
+        });
     </script>
-  </body>
+</body>
+
 </html>

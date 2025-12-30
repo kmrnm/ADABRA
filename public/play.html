@@ -328,6 +328,11 @@
       beepAudio.play().catch(() => { });
     });
 
+    socket.on("timeUp", () => {
+      setMsg("Time is up.", "err", { sticky: true });
+      hardDisableBuzzNow();
+    });
+
     socket.on("joinedRoom", ({ roomCode }) => {
       setMsg(`Joined room ${roomCode}. Select your team once, then wait for the beep.`, "ok");
     });
