@@ -43,7 +43,6 @@
                             <div class="muted">Player link</div>
                             <input id="playerLink" readonly style="width: 560px;" />
                         </div>
-                        <button id="copy" class="btn">Copy Link</button>
                     </div>
 
                     <hr />
@@ -103,7 +102,6 @@
         const statusEl = document.getElementById("status");
         const roomCodeEl = document.getElementById("roomCode");
         const playerLinkEl = document.getElementById("playerLink");
-        const copyBtn = document.getElementById("copy");
 
         const roundEl = document.getElementById("round");
         const phaseEl = document.getElementById("phase");
@@ -212,6 +210,20 @@
                 roomCodeEl.className = "code ok";
 
                 playerLinkEl.value = `${location.origin}/play?room=${encodeURIComponent(currentRoom)}`;
+                playerLinkEl.style.cursor = "copy";
+                playerLinkEl.title = "Click to copy";
+
+                playerLinkEl.addEventListener("click", async () => {
+                    if (!playerLinkEl.value) return;
+                    try {
+                        await navigator.clipboard.writeText(playerLinkEl.value);
+                        setStatus("Player link copied.", "ok");
+                        setTimeout(() => setStatus("Ready.", "muted"), 800);
+                    } catch {
+                        setStatus("Copy failed. Copy manually.", "err");
+                    }
+                });
+
 
                 socket.emit("joinRoom", { roomCode: currentRoom, hostKey });
 
@@ -219,16 +231,6 @@
             } catch (e) {
                 console.error(e);
                 setStatus("Failed to create a room.", "err");
-            }
-        };
-
-        copyBtn.onclick = async () => {
-            try {
-                await navigator.clipboard.writeText(playerLinkEl.value);
-                setStatus("Player link copied.", "ok");
-                setTimeout(() => setStatus("Ready.", "muted"), 800);
-            } catch {
-                setStatus("Copy failed. Copy manually.", "err");
             }
         };
 
