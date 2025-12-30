@@ -52,6 +52,7 @@
     </div>
 
     <audio id="beepAudio" src="/sounds/beep.mp3" preload="auto"></audio>
+    <audio id="buzzAudio" src="/sounds/buzz.mp3" preload="auto"></audio>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -71,12 +72,29 @@
       const teamsEl = document.getElementById("teams");
 
       const beepAudio = document.getElementById("beepAudio");
+      const buzzAudio = document.getElementById("buzzAudio");
 
       let currentRoom = null;
       let lastState = null;
 
       let mySocketId = null;
       socket.on("connect", () => { mySocketId = socket.id; });
+
+      // message “locks”: if set, we keep it until explicitly cleared
+      let stickyMsg = null; // { text, cls } or null
+
+      function setMsg(text, cls = "muted", { sticky = false } = {}) {
+        msgEl.className = cls;
+        msgEl.textContent = text;
+        stickyMsg = sticky ? { text, cls } : null;
+      }
+
+      function renderStickyMsgIfAny() {
+        if (!stickyMsg) return false;
+        msgEl.className = stickyMsg.cls;
+        msgEl.textContent = stickyMsg.text;
+        return true;
+      }
 
       // stable playerId (survives refresh)
       function getOrCreatePlayerId() {
@@ -92,11 +110,6 @@
 
       function roomTeamKey(roomCode) {
         return `adabra_team_v1_${roomCode}`;
-      }
-
-      function setMsg(text, cls = "muted") {
-        msgEl.className = cls;
-        msgEl.textContent = text;
       }
 
       function formatMs(ms) {
@@ -154,6 +167,28 @@
         myScoreEl.className = "bigScore ok";
       }
 
+      // ---- NEW: locked-out handling + buzz button enable/disable ----
+      function updateBuzzAvailability() {
+        const chosenTeam = getSavedTeam(currentRoom) || (teamEl.textContent !== "none" ? teamEl.textContent : null);
+        if (!chosenTeam || !lastState) {
+          buzzBtn.disabled = true;
+          return;
+        }
+
+        const lockedOut = new Set(lastState.lockedOutTeams || []);
+        const isLockedOut = lockedOut.has(chosenTeam);
+
+        // disable buzz if locked out OR round not armed
+        if (isLockedOut) {
+          buzzBtn.disabled = true;
+          setMsg("Your team is locked out for this round.", "err", { sticky: true });
+          return;
+        }
+
+        // not locked out
+        buzzBtn.disabled = (lastState.phase !== "armed");
+      }
+
       function joinRoom(code) {
         const roomCode = String(code || "").trim().toUpperCase();
         if (!roomCode) return setMsg("Enter a room code.", "err");
@@ -183,11 +218,30 @@
 
       joinBtn.onclick = () => joinRoom(roomInput.value);
 
+      // ---- NEW: spacebar triggers buzz ----
+      // (prevents page scroll, and triggers buzz if allowed)
+      window.addEventListener("keydown", (e) => {
+        if (e.code === "Space") {
+          e.preventDefault();
+          if (!buzzBtn.disabled) buzzBtn.click();
+        }
+      });
+
+      // ---- NEW: play local buzz sound when user clicks buzz ----
+      function playBuzzSound() {
+        buzzAudio.currentTime = 0;
+        buzzAudio.play().catch(() => {});
+      }
+
       buzzBtn.onclick = () => {
+        playBuzzSound();
         socket.emit("buzz");
       };
 
       socket.on("beep", () => {
+        // new round start clears sticky “locked out” etc.
+        stickyMsg = null;
+
         beepAudio.currentTime = 0;
         beepAudio.play().catch(() => {});
       });
@@ -203,6 +257,7 @@
         setMsg(`Team ${teamId} selected.`, "ok");
         if (lastState) renderTeamButtons(lastState.teams, teamId);
         updateMyScore();
+        updateBuzzAvailability();
       });
 
       socket.on("roomState", (state) => {
@@ -219,29 +274,44 @@
         renderTeamButtons(state.teams, chosenTeam);
 
         updateMyScore();
+        updateBuzzAvailability();
 
         if (!chosenTeam) {
+          buzzBtn.disabled = true;
           setMsg("Select your team once.", "muted");
+          return;
+        }
+
+        // If a sticky message exists (locked out, etc.), keep it
+        if (renderStickyMsgIfAny()) return;
+
+        // ---- NEW: show who buzzed first for everyone ----
+        if (state.phase === "locked" && state.lastBuzz) {
+          if (state.lastBuzz.by === mySocketId) {
+            setMsg("You buzzed first. Waiting for host decision…", "ok");
+          } else {
+            setMsg(`Team ${state.lastBuzz.teamId} buzzed first. Wait…`, "muted");
+          }
           return;
         }
 
         if (state.phase === "lobby") setMsg("Waiting for beep…", "muted");
         if (state.phase === "armed") setMsg("Round started. Buzz now!", "ok");
-        if (state.phase === "locked") setMsg("Locked. Waiting for host decision…", "muted");
       });
 
-      socket.on("buzzed", ({ by, roomCode }) => {
+      // keep this too; it makes the UI update instantly even before roomState arrives
+      socket.on("buzzed", ({ by, teamId, roomCode }) => {
         if (roomCode !== currentRoom) return;
 
         if (by === mySocketId) setMsg("You buzzed first. Waiting for host decision…", "ok");
-        else setMsg("Another team buzzed first. Wait…", "muted");
+        else setMsg(`Team ${teamId} buzzed first. Wait…`, "muted");
       });
 
       socket.on("buzzRejected", ({ reason }) => {
         if (reason === "NO_TEAM") setMsg("Choose your team first.", "err");
         else if (reason === "NOT_ARMED") setMsg("Too early. Wait for the beep.", "err");
         else if (reason === "TIME_UP") setMsg("Too late. Time is up.", "err");
-        else if (reason === "TEAM_LOCKED_OUT") setMsg("Your team is locked out this round.", "err");
+        else if (reason === "TEAM_LOCKED_OUT") setMsg("Your team is locked out this round.", "err", { sticky: true });
       });
 
       socket.on("errorMsg", (text) => setMsg(text, "err"));
