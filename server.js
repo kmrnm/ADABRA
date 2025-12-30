@@ -68,6 +68,7 @@ function createRoom() {
     lockedBySocketId: null,
     lockedByTeamId: null,
     lastBuzz: null, // { by, teamId } or null
+    lockedByPlayerId: null,
 
     // teams
     maxTeams: 6,
@@ -87,7 +88,7 @@ function publicRoomState(room) {
   return {
     roomCode: room.roomCode,
     membersCount: room.membersCount,
-    
+
     tablesChosenCount: room.teamTaken.size,
 
     phase: room.phase,
@@ -150,6 +151,7 @@ function resetToLobby(room) {
   room.lockedOutTeams.clear();
 
   room.firstBuzzTeamId = null;
+  room.lockedByPlayerId = null;
 }
 
 // Timer loop
@@ -437,7 +439,9 @@ io.on("connection", (socket) => {
     if (!room) return;
 
     const teamId = socket.data.teamId;
-    if (!teamId) return socket.emit("buzzRejected", { reason: "NO_TEAM" });
+    const playerId = socket.data.playerId;
+
+    if (!teamId || !playerId) return socket.emit("buzzRejected", { reason: "NO_TEAM" });
 
     if (room.phase !== "armed") {
       return socket.emit("buzzRejected", { reason: "NOT_ARMED" });
@@ -452,20 +456,23 @@ io.on("connection", (socket) => {
     }
 
     room.phase = "locked";
-    room.lockedBySocketId = socket.id;
+
+    // IMPORTANT: lock by PLAYER + TEAM, not socket
+    room.lockedByPlayerId = playerId;
     room.lockedByTeamId = teamId;
 
     if (!room.firstBuzzTeamId) room.firstBuzzTeamId = teamId;
 
-    room.lastBuzz = { by: socket.id, teamId };
+    room.lastBuzz = { by: playerId, teamId };
 
     // pause timer while answering
     room.timerRunning = false;
     room.timerLastTickAt = null;
 
-    io.to(room.roomCode).emit("buzzed", { by: socket.id, teamId, roomCode: room.roomCode });
+    io.to(room.roomCode).emit("buzzed", { teamId, roomCode: room.roomCode });
     emitRoomState(room.roomCode);
   });
+
 
   socket.on("disconnect", () => {
     const roomCode = socket.data.roomCode;
@@ -474,16 +481,11 @@ io.on("connection", (socket) => {
     const room = rooms.get(roomCode);
     room.membersCount = Math.max(0, room.membersCount - 1);
 
-    // if the locked buzzer left, unlock and resume
-    if (room.lockedBySocketId === socket.id) {
-      room.lockedBySocketId = null;
-      room.lockedByTeamId = null;
-      room.phase = "armed";
-
-      if (room.remainingMs > 0) {
-        room.timerRunning = true;
-        room.timerLastTickAt = Date.now();
-      }
+    if (room.phase === "locked" && room.lockedByPlayerId && socket.data.playerId === room.lockedByPlayerId) {
+      // Keep locked + keep timer paused.
+      // Host can still judge Correct/Incorrect.
+      emitRoomState(roomCode);
+      return;
     }
 
     emitRoomState(roomCode);
