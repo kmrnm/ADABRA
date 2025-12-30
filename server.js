@@ -74,7 +74,9 @@ function createRoom() {
     lockedOutTeams: new Set(),
 
     // persistent player identity for team choice (refresh-safe)
-    playerTeams: new Map() // playerId -> teamId
+    playerTeams: new Map(), // playerId -> teamId
+
+    teamTaken: new Map()
   });
 
   return { roomCode, hostKey };
@@ -98,7 +100,9 @@ function publicRoomState(room) {
     lastBuzz: room.lastBuzz,
     lockedOutTeams: Array.from(room.lockedOutTeams),
 
-    teams: Object.values(room.teams).map(t => ({ id: t.id, name: t.name, score: t.score }))
+    teams: Object.values(room.teams).map(t => ({ id: t.id, name: t.name, score: t.score })),
+
+    takenTeams: Array.from(room.teamTaken.entries()).map(([teamId, playerId]) => ({ teamId, playerId })),
   };
 }
 
@@ -217,6 +221,10 @@ io.on("connection", (socket) => {
     if (socket.data.isHost) return socket.emit("errorMsg", "Host cannot select a team.");
     if (!socket.data.playerId) return socket.emit("errorMsg", "Missing playerId. Refresh /play.");
 
+    const requested = String(teamId || "").trim();
+    if (!room.teams[requested]) return socket.emit("errorMsg", "Invalid team.");
+
+    // If this player already has a team, keep it (cannot change)
     const existing = room.playerTeams.get(socket.data.playerId);
     if (existing) {
       socket.data.teamId = existing;
@@ -224,13 +232,18 @@ io.on("connection", (socket) => {
       return;
     }
 
-    const t = String(teamId || "").trim();
-    if (!room.teams[t]) return socket.emit("errorMsg", "Invalid team.");
+    // Enforce one-device-per-team
+    const takenBy = room.teamTaken.get(requested);
+    if (takenBy && takenBy !== socket.data.playerId) {
+      return socket.emit("errorMsg", "This team is already taken in this room.");
+    }
 
-    room.playerTeams.set(socket.data.playerId, t);
-    socket.data.teamId = t;
+    // Assign
+    room.playerTeams.set(socket.data.playerId, requested);
+    room.teamTaken.set(requested, socket.data.playerId);
+    socket.data.teamId = requested;
 
-    socket.emit("teamSet", { teamId: t, locked: true });
+    socket.emit("teamSet", { teamId: requested, locked: true });
     emitRoomState(room.roomCode);
   });
 
