@@ -441,8 +441,6 @@
 
       renderTeamButtons(state.teams, chosenTeam, state.takenTeams, playerId);
 
-      renderTeamButtons(state.teams, chosenTeam, state.takenTeams, playerId);
-
       // TEAM NAME BOX SHOW/HIDE
       const lockedNames = new Set(state.teamNameLocked || []);
       const takenMap = new Map((state.takenTeams || []).map(x => [x.teamId, x.playerId]));
