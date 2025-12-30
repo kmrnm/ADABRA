@@ -372,7 +372,7 @@
     });
 
     socket.on("teamSet", ({ teamId }) => {
-      teamEl.textContent = teamId;
+      teamEl.textContent = `Team: ${teamLabel(teamId)}`;
       teamEl.className = "ok";
       if (currentRoom) saveTeam(currentRoom, teamId);
       setMsg(`Team ${teamId} selected.`, "ok");
@@ -419,6 +419,11 @@
       timeEl.textContent = formatMs(state.remainingMs);
 
       const chosenTeam = getSavedTeam(currentRoom) || (teamEl.textContent !== "none" ? teamEl.textContent : null);
+      if (chosenTeam) {
+        teamEl.textContent = `Team: ${teamLabel(chosenTeam)}`;
+      } else {
+        teamEl.textContent = "Team: none";
+      }
       renderTeamButtons(state.teams, chosenTeam, state.takenTeams, playerId);
 
       // TEAM NAME BOX SHOW/HIE
