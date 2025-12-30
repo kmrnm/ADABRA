@@ -348,6 +348,9 @@ io.on("connection", (socket) => {
     if (!room) return;
     if (!isHost(socket, room)) return socket.emit("errorMsg", "Host only.");
 
+    //Round changes when host beeps :)
+    room.roundNumber += 1;
+
     // start armed round
     room.phase = "armed";
     room.lockedBySocketId = null;

@@ -4,137 +4,70 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ADABRA • Play</title>
-  <style>
-    body {
-      font-family: system-ui, -apple-system, Arial;
-      padding: 24px;
-    }
+  <title>ADABRA • Player</title>
+  <link rel="stylesheet" href="/css/app.css" />
+  <link rel="stylesheet" href="/css/play.css" />
 
-    .card {
-      border: 1px solid #ddd;
-      border-radius: 10px;
-      padding: 16px;
-      max-width: 720px;
-    }
-
-    .row {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      align-items: center;
-      margin: 12px 0;
-    }
-
-    input {
-      padding: 12px;
-      font-size: 18px;
-      width: 180px;
-      text-transform: uppercase;
-    }
-
-    button {
-      padding: 12px 16px;
-      font-size: 18px;
-      cursor: pointer;
-    }
-
-    #buzz {
-      width: 100%;
-      font-size: 34px;
-      padding: 22px;
-    }
-
-    .muted {
-      color: #666;
-    }
-
-    .ok {
-      color: #0a7;
-    }
-
-    .err {
-      color: #c00;
-    }
-
-    .pill {
-      display: inline-block;
-      padding: 6px 10px;
-      border: 1px solid #ddd;
-      border-radius: 999px;
-    }
-
-    #time {
-      font-variant-numeric: tabular-nums;
-      font-size: 18px;
-    }
-
-    .teams {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    .teamBtn {
-      min-width: 120px;
-    }
-
-    .bigScore {
-      font-size: 28px;
-      font-weight: 900;
-      font-variant-numeric: tabular-nums;
-    }
-  </style>
 </head>
 
-<body>
-  <h1>ADABRA • Player</h1>
-
-  <div id="net" class="pill muted" style="display:none; width:100%; text-align:center;">
-    Reconnecting…
-  </div>
-
-  <div class="card">
-    <div class="row">
-      <input id="roomCode" placeholder="ROOM" maxlength="6" />
-      <button id="join">Join</button>
+<body class="play">
+  <div class="container">
+    <div class="topbar">
+      <div class="brand"><span class="brand-dot"></span>ADABRA</div>
+      <div class="muted">Player Console</div>
     </div>
 
-    <div class="row">
-      <span class="pill">Room: <strong id="currentRoom" class="muted">none</strong></span>
-      <span class="pill">Team: <strong id="team" class="muted">none</strong></span>
-      <span class="pill">Phase: <strong id="phase" class="muted">—</strong></span>
-      <span class="pill">Time: <strong id="time" class="muted">00:00.0</strong></span>
+    <div id="net" class="muted" style="display:none; width:100%; text-align:center;">
+      Reconnecting…
     </div>
 
-    <div class="row">
-      <span class="pill">Your team score: <strong id="myScore" class="bigScore muted">—</strong></span>
-    </div>
-
-    <div class="row">
-      <div class="muted">Choose table:</div>
-    </div>
-
-    <div id="teams" class="teams"></div>
-
-    <div id="nameBox" style="display:none; margin-top: 10px;">
-      <div class="muted">Set your team name (one time):</div>
+    <div class="card">
       <div class="row">
-        <input id="teamNameInput" placeholder="e.g. Avengers" maxlength="16"
-          style="width: 260px; text-transform:none;" />
-        <button id="saveTeamName">Save</button>
+        <input id="roomCode" placeholder="ROOM" maxlength="6" />
+        <button id="join" class="btn btn-anim">Join</button>
+      </div>
+
+      <div class="hud">
+        <div class="hudRow">
+          <span class="pill">Room: <strong id="currentRoom" class="muted">none</strong></span>
+          <span class="pill">Team: <strong id="team" class="muted">none</strong></span>
+          <span class="pill">Phase: <strong id="phase" class="muted">—</strong></span>
+          <span class="pill">Score: <strong id="myScore" class="muted">—</strong></span>
+        </div>
+
+        <div class="timerBig">
+          <span id="time">00:00.0</span>
+        </div>
+      </div>
+
+      <div id="tablePicker">
+        <div class="row">
+          <div class="muted">Choose table:</div>
+        </div>
+
+        <div id="teams" class="teams"></div>
+      </div>
+
+
+      <div id="nameBox" style="display:none; margin-top: 10px;">
+        <div class="muted">Set your team name (one time):</div>
+        <div class="row">
+          <input id="teamNameInput" placeholder="e.g. Avengers" maxlength="16"
+            style="width: 260px; text-transform:none;" />
+          <button id="saveTeamName" class="btn btn-anim">Save</button>
+        </div>
+      </div>
+
+      <p id="msg" class="muted">Join a room, select your team, then wait for the beep.</p>
+      <div class="buzzWrap">
+        <button id="buzz" class="buzzBtn">BUZZ</button>
       </div>
     </div>
+  </div>
 
-    <p id="msg" class="muted">Join a room, select your team, then wait for the beep.</p>
-
-    <div id="lockBanner" class="pill muted"
-      style="display:none; width:100%; justify-content:center; text-align:center; font-weight:700;">
-      —
-    </div>
-
-
-    <button id="buzz">BUZZ</button>
+  <div id="lockBanner" class="muted"
+    style="display:none; width:100%; justify-content:center; text-align:center; font-weight:700;">
+    —
   </div>
 
   <audio id="beepAudio" src="/sounds/beep.mp3" preload="auto"></audio>
@@ -149,7 +82,7 @@
     socket.on("disconnect", () => {
       netEl.style.display = "block";
       netEl.textContent = "Disconnected. Reconnecting…";
-      netEl.className = "pill err";
+      netEl.className = "err";
     });
 
     const roomInput = document.getElementById("roomCode");
@@ -333,6 +266,8 @@
       const saved = getSavedTeam(roomCode);
       myTeamId = saved ? String(saved) : null;
 
+      document.getElementById("tablePicker").style.display = myTeamId ? "none" : "block";
+
       if (myTeamId) {
         teamEl.textContent = `${teamLabel(myTeamId)}`;
         teamEl.className = "ok";
@@ -372,6 +307,8 @@
       if (buzzBtn.disabled) return;
       playBuzzSound();
       hardDisableBuzzNow();
+      buzzBtn.classList.add("buzzFlash");
+      setTimeout(() => buzzBtn.classList.remove("buzzFlash"), 220);
       socket.emit("buzz");
     };
 
@@ -404,6 +341,8 @@
       teamEl.textContent = `${teamLabel(myTeamId)}`;
       teamEl.className = "ok";
 
+      document.getElementById("tablePicker").style.display = "none";
+
       setMsg("Team selected.", "ok");
 
       teamsEl.style.display = "none";
@@ -431,21 +370,28 @@
       if (state.phase === "lobby") stickyMsg = null;
 
       // ----- LOCK BANNER LOGIC -----
+      // ----- LOCK BANNER LOGIC -----
       if (state.phase === "locked" && state.lastBuzz) {
         lockBannerEl.style.display = "block";
 
         const myTeam = myTeamId || (currentRoom ? getSavedTeam(currentRoom) : null);
+        const isMe = myTeam && String(state.lastBuzz.teamId) === String(myTeam);
 
-        if (myTeam && String(state.lastBuzz.teamId) === String(myTeam)) {
+        // Always keep pill styling + pulse when *you* are locked (waiting)
+        lockBannerEl.className = "pill"; // baseline
+        if (isMe) {
           lockBannerEl.textContent = "LOCKED — Your team is answering";
-          lockBannerEl.className = "pill ok";
+          lockBannerEl.classList.add("ok", "waitPulse");
         } else {
           lockBannerEl.textContent = `LOCKED — ${teamLabel(state.lastBuzz.teamId)} is answering`;
-          lockBannerEl.className = "pill muted";
+          lockBannerEl.classList.add("muted");
+          lockBannerEl.classList.remove("waitPulse");
         }
       } else {
         lockBannerEl.style.display = "none";
+        lockBannerEl.classList.remove("waitPulse");
       }
+
 
       phaseEl.textContent = state.phase;
       phaseEl.className = state.phase === "armed" ? "ok" : "muted";
@@ -482,7 +428,7 @@
 
       if (!chosenTeam) {
         buzzBtn.disabled = true;
-        setMsg("Select your team once.", "muted");
+        setMsg("Select your table.", "muted");
         return;
       }
 
@@ -500,7 +446,7 @@
 
         if (isFirst) {
           if (isMe) {
-            setMsg("You buzzed first. Waiting for host decision…", "ok");
+            setMsg("You buzzed first.", "ok");
           } else {
             setMsg(`${teamLabel(state.lastBuzz.teamId)} buzzed first. Wait…`, "muted");
           }
