@@ -163,6 +163,7 @@
 
     let currentRoom = null;
     let lastState = null;
+    let myTeamId = null; // real team id: "1", "2", ...
 
     let mySocketId = null;
     socket.on("connect", () => { mySocketId = socket.id; });
@@ -260,25 +261,27 @@
     }
 
     function updateMyScore() {
-      const myTeam = teamEl.textContent !== "none" ? teamEl.textContent : null;
-      if (!myTeam || !lastState) {
+      const chosenTeam = myTeamId || (currentRoom ? getSavedTeam(currentRoom) : null);
+      if (!chosenTeam || !lastState || !Array.isArray(lastState.teams)) {
         myScoreEl.textContent = "—";
         myScoreEl.className = "bigScore muted";
         return;
       }
-      const t = (lastState.teams || []).find(x => x.id === myTeam);
+
+      const t = lastState.teams.find(x => String(x.id) === String(chosenTeam));
       if (!t) {
         myScoreEl.textContent = "—";
         myScoreEl.className = "bigScore muted";
         return;
       }
+
       myScoreEl.textContent = String(t.score);
       myScoreEl.className = "bigScore ok";
     }
 
     // ---- NEW: locked-out handling + buzz button enable/disable ----
     function updateBuzzAvailability() {
-      const chosenTeam = getSavedTeam(currentRoom) || (teamEl.textContent !== "none" ? teamEl.textContent : null);
+      const chosenTeam = myTeamId || (currentRoom ? getSavedTeam(currentRoom) : null);
       if (!chosenTeam || !lastState) {
         buzzBtn.disabled = true;
         return;
@@ -307,8 +310,10 @@
       currentRoomEl.className = "ok";
 
       const saved = getSavedTeam(roomCode);
-      if (saved) {
-        teamEl.textContent = saved;
+      myTeamId = saved ? String(saved) : null;
+
+      if (myTeamId) {
+        teamEl.textContent = `${teamLabel(myTeamId)}`;
         teamEl.className = "ok";
       } else {
         teamEl.textContent = "none";
@@ -372,11 +377,17 @@
     });
 
     socket.on("teamSet", ({ teamId }) => {
-      teamEl.textContent = `Team: ${teamLabel(teamId)}`;
+      myTeamId = String(teamId);
+      if (currentRoom) saveTeam(currentRoom, myTeamId);
+
+      teamEl.textContent = `${teamLabel(myTeamId)}`;
       teamEl.className = "ok";
-      if (currentRoom) saveTeam(currentRoom, teamId);
-      setMsg(`Team ${teamId} selected.`, "ok");
-      if (lastState) renderTeamButtons(lastState.teams, teamId);
+
+      setMsg("Team selected.", "ok");
+
+      // render with correct signature
+      if (lastState) renderTeamButtons(lastState.teams, myTeamId, lastState.takenTeams, playerId);
+
       updateMyScore();
       updateBuzzAvailability();
     });
@@ -418,15 +429,21 @@
 
       timeEl.textContent = formatMs(state.remainingMs);
 
-      const chosenTeam = getSavedTeam(currentRoom) || (teamEl.textContent !== "none" ? teamEl.textContent : null);
+      const chosenTeam = myTeamId || (currentRoom ? getSavedTeam(currentRoom) : null);
+
       if (chosenTeam) {
-        teamEl.textContent = `Team: ${teamLabel(chosenTeam)}`;
+        teamEl.textContent = `${teamLabel(chosenTeam)}`;
+        teamEl.className = "ok";
       } else {
-        teamEl.textContent = "Team: none";
+        teamEl.textContent = "none";
+        teamEl.className = "muted";
       }
+
       renderTeamButtons(state.teams, chosenTeam, state.takenTeams, playerId);
 
-      // TEAM NAME BOX SHOW/HIE
+      renderTeamButtons(state.teams, chosenTeam, state.takenTeams, playerId);
+
+      // TEAM NAME BOX SHOW/HIDE
       const lockedNames = new Set(state.teamNameLocked || []);
       const takenMap = new Map((state.takenTeams || []).map(x => [x.teamId, x.playerId]));
       const iOwnThisTeam = chosenTeam && takenMap.get(chosenTeam) === playerId;
@@ -483,16 +500,8 @@
     socket.on("buzzed", ({ roomCode }) => {
       if (roomCode !== currentRoom) return;
       hardDisableBuzzNow(); // stop spam instantly
-
-      const myTeam =
-        getSavedTeam(currentRoom) || (teamEl.textContent !== "none" ? teamEl.textContent : null);
-
-      if (myTeam && teamId === myTeam) {
-        setMsg("Your team buzzed first. Waiting for host decision…", "ok");
-      } else {
-        setMsg(`Team ${teamId} buzzed first. Wait…`, "muted");
-      }
     });
+
 
     socket.on("buzzRejected", ({ reason }) => {
       if (reason === "NO_TEAM") setMsg("Choose your team first.", "err");
