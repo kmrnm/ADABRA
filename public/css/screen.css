@@ -1,0 +1,122 @@
+body.screen{
+  background:
+    radial-gradient(900px 520px at 18% 10%, rgba(124, 92, 255, .22), transparent 60%),
+    radial-gradient(900px 520px at 84% 18%, rgba(49, 211, 255, .18), transparent 60%),
+    linear-gradient(180deg, #070a14, #0b1020);
+}
+
+.screenCard{
+  padding: 22px;
+}
+
+.screenHeader{
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.2fr;
+  gap: 14px;
+  align-items: end;
+}
+
+.screenRoom{
+  font-size: 44px;
+  font-weight: 1000;
+  letter-spacing: 2px;
+}
+
+.screenPhase{
+  font-size: 22px;
+  font-weight: 900;
+  color: var(--muted);
+}
+
+.screenTime{
+  font-size: 64px;
+  font-weight: 1100;
+  letter-spacing: 1px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.lockedBanner{
+  margin-top: 14px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.06);
+  text-align: center;
+  font-weight: 1000;
+  font-size: 22px;
+}
+
+.screenBody{
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 16px;
+  align-items: start;
+}
+
+.screenScoreboard{
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.screenTeamRow{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(255,255,255,.06);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.screenTeamName{
+  font-size: 24px;
+  font-weight: 950;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.screenTeamScore{
+  font-size: 34px;
+  font-weight: 1100;
+  font-variant-numeric: tabular-nums;
+  min-width: 72px;
+  text-align: right;
+}
+
+.lastBuzzBig{
+  margin-top: 10px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.06);
+  font-weight: 1000;
+  font-size: 22px;
+  min-height: 60px;
+  display: flex;
+  align-items: center;
+}
+
+.tipText{
+  margin-top: 6px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(255,255,255,.04);
+  color: var(--muted);
+}
+
+/* projector-friendly scaling on smaller screens */
+@media (max-width: 900px){
+  .screenHeader{ grid-template-columns: 1fr; }
+  .screenTime{ text-align: left; }
+  .screenBody{ grid-template-columns: 1fr; }
+}
