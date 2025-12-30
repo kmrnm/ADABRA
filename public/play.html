@@ -162,6 +162,10 @@
       stickyMsg = sticky ? { text, cls } : null;
     }
 
+    function hardDisableBuzzNow() {
+      buzzBtn.disabled = true;
+    }
+
     function renderStickyMsgIfAny() {
       if (!stickyMsg) return false;
       msgEl.className = stickyMsg.cls;
@@ -307,9 +311,12 @@
     }
 
     buzzBtn.onclick = () => {
+      if (buzzBtn.disabled) return;
       playBuzzSound();
+      hardDisableBuzzNow();
       socket.emit("buzz");
     };
+
 
     socket.on("beep", () => {
       // new round start clears sticky “locked out” etc.
@@ -397,7 +404,7 @@
     // keep this too; it makes the UI update instantly even before roomState arrives
     socket.on("buzzed", ({ by, teamId, roomCode }) => {
       if (roomCode !== currentRoom) return;
-
+      hardDisableBuzzNow();
       if (by === mySocketId) setMsg("You buzzed first. Waiting for host decision…", "ok");
       else setMsg(`Team ${teamId} buzzed first. Wait…`, "muted");
     });
