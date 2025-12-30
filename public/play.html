@@ -156,6 +156,8 @@
     // message “locks”: if set, we keep it until explicitly cleared
     let stickyMsg = null; // { text, cls } or null
 
+    let lastRoundNumber = null;
+
     function setMsg(text, cls = "muted", { sticky = false } = {}) {
       msgEl.className = cls;
       msgEl.textContent = text;
@@ -344,6 +346,17 @@
       if (!currentRoom || state.roomCode !== currentRoom) return;
 
       lastState = state;
+
+      // New round, clear sticky messages (lockout, etc.)
+      if (lastRoundNumber === null) lastRoundNumber = state.roundNumber;
+      if (state.roundNumber !== lastRoundNumber) {
+        stickyMsg = null;
+        lastRoundNumber = state.roundNumber;
+      }
+
+      // New round, reset phase clears sticky messages
+      if (state.phase === "lobby") stickyMsg = null;
+
 
       // ----- LOCK BANNER LOGIC -----
       if (state.phase === "locked" && state.lastBuzz) {
