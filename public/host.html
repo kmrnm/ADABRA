@@ -169,6 +169,7 @@
     </div>
 
     <audio id="beepAudio" src="/sounds/beep.mp3" preload="auto"></audio>
+    <audio id="buzzAudio" src="/sounds/buzz.mp3" preload="auto"></audio>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -202,6 +203,7 @@
         const scoreboardEl = document.getElementById("scoreboard");
 
         const beepAudio = document.getElementById("beepAudio");
+        const buzzAudio = document.getElementById("buzzAudio");
 
         let currentRoom = null;
         let hostKey = null;
@@ -303,6 +305,20 @@
         socket.on("beep", () => {
             beepAudio.currentTime = 0;
             beepAudio.play().catch(() => { });
+        });
+
+        let lastBuzzKey = null;
+
+        socket.on("buzzed", ({ roomCode, teamId, by }) => {
+            if (!currentRoom || roomCode !== currentRoom) return;
+
+            // Prevent double-play if the same buzz arrives twice
+            const key = `${roomCode}:${by}:${teamId}`;
+            if (lastBuzzKey === key) return;
+            lastBuzzKey = key;
+
+            buzzAudio.currentTime = 0;
+            buzzAudio.play().catch(() => { });
         });
 
         socket.on("timeUp", () => {
