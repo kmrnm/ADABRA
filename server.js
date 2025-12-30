@@ -87,6 +87,8 @@ function publicRoomState(room) {
   return {
     roomCode: room.roomCode,
     membersCount: room.membersCount,
+    
+    tablesChosenCount: room.teamTaken.size,
 
     phase: room.phase,
     roundNumber: room.roundNumber,
