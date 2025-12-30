@@ -414,12 +414,19 @@
       if (state.phase === "armed") setMsg("Round started. Buzz now!", "ok");
     });
 
-    // keep this too; it makes the UI update instantly even before roomState arrives
-    socket.on("buzzed", ({ by, teamId, roomCode }) => {
+    socket.on("buzzed", ({ teamId, roomCode }) => {
       if (roomCode !== currentRoom) return;
+
       hardDisableBuzzNow();
-      if (by === mySocketId) setMsg("You buzzed first. Waiting for host decision…", "ok");
-      else setMsg(`Team ${teamId} buzzed first. Wait…`, "muted");
+
+      const myTeam =
+        getSavedTeam(currentRoom) || (teamEl.textContent !== "none" ? teamEl.textContent : null);
+
+      if (myTeam && teamId === myTeam) {
+        setMsg("Your team buzzed first. Waiting for host decision…", "ok");
+      } else {
+        setMsg(`Team ${teamId} buzzed first. Wait…`, "muted");
+      }
     });
 
     socket.on("buzzRejected", ({ reason }) => {
