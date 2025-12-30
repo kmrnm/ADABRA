@@ -411,13 +411,13 @@
       if (state.phase === "locked" && state.lastBuzz) {
         lockBannerEl.style.display = "block";
 
-        const myTeam = getSavedTeam(currentRoom) || (teamEl.textContent !== "none" ? teamEl.textContent : null);
+        const myTeam = myTeamId || (currentRoom ? getSavedTeam(currentRoom) : null);
 
         if (myTeam && state.lastBuzz.teamId === myTeam) {
           lockBannerEl.textContent = "LOCKED — Your team is answering";
           lockBannerEl.className = "pill ok";
         } else {
-          lockBannerEl.textContent = `LOCKED — Team ${teamLabel(state.lastBuzz.teamId)} is answering`;
+          lockBannerEl.textContent = `LOCKED — ${teamLabel(state.lastBuzz.teamId)} is answering`;
           lockBannerEl.className = "pill muted";
         }
       } else {
@@ -466,8 +466,7 @@
 
       // ===== LOCKED: show correct buzz message and STOP =====
       if (state.phase === "locked" && state.lastBuzz) {
-        const myTeam =
-          getSavedTeam(currentRoom) || (teamEl.textContent !== "none" ? teamEl.textContent : null);
+        const myTeam = myTeamId || (currentRoom ? getSavedTeam(currentRoom) : null);
 
         const isMe = myTeam && String(state.lastBuzz.teamId) === String(myTeam);
         const isFirst =
