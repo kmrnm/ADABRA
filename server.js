@@ -11,7 +11,7 @@ app.use(express.static("public"));
 
 const rooms = new Map(); // roomCode -> roomState
 
-function randomString(len = 12) {
+function randomString(len = 20) {
   const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
   let out = "";
   for (let i = 0; i < len; i++) out += chars[Math.floor(Math.random() * chars.length)];
@@ -32,28 +32,18 @@ function createUniqueRoomCode() {
   return code;
 }
 
-function makeTeams(initialCount) {
+function makeTeams(count) {
   const teams = {};
-  for (let i = 1; i <= initialCount; i++) {
+  for (let i = 1; i <= count; i++) {
     const id = String(i);
     teams[id] = { id, name: `Team ${i}`, score: 0 };
   }
   return teams;
 }
 
-function defaultQuestions() {
-  return [
-    { text: "What is the capital of Azerbaijan?", points: 1 },
-    { text: "What is 2 + 2 * 2?", points: 1 },
-    { text: "Name one programming language that runs in the browser.", points: 1 },
-    { text: "What is the derivative of x^2?", points: 1 },
-    { text: "In Git, what command creates a commit?", points: 1 }
-  ];
-}
-
 function createRoom() {
   const roomCode = createUniqueRoomCode();
-  const hostKey = randomString(20);
+  const hostKey = randomString(24);
 
   rooms.set(roomCode, {
     roomCode,
@@ -61,32 +51,30 @@ function createRoom() {
     createdAt: Date.now(),
     membersCount: 0,
 
-    // game state
+    // round state
     phase: "lobby", // "lobby" | "armed" | "locked"
-    armedAt: null,
+    roundNumber: 0,
 
-    lockedBySocketId: null,
-    lockedByTeamId: null,
-
-    // timer
+    // timing
     durationMs: 15000,
     remainingMs: 15000,
     timerRunning: false,
     timerLastTickAt: null,
 
-    // teams
-    teams: makeTeams(2),
-    maxTeams: 6,
+    // buzz state
+    lockedBySocketId: null,
+    lockedByTeamId: null,
+    lastBuzz: null, // { by, teamId } or null
 
-    // per-round lockout
+    // teams
+    maxTeams: 6,
+    teams: makeTeams(2),
+
+    // per-round lockout: teams that cannot buzz again after incorrect
     lockedOutTeams: new Set(),
 
-    // persistent team assignment per room
-    playerTeams: new Map(), // playerId -> teamId
-
-    // questions
-    questions: defaultQuestions(),
-    currentQuestionIndex: -1 // -1 = not started yet
+    // persistent player identity for team choice (refresh-safe)
+    playerTeams: new Map() // playerId -> teamId
   });
 
   return { roomCode, hostKey };
@@ -96,7 +84,9 @@ function publicRoomState(room) {
   return {
     roomCode: room.roomCode,
     membersCount: room.membersCount,
+
     phase: room.phase,
+    roundNumber: room.roundNumber,
 
     durationMs: room.durationMs,
     remainingMs: room.remainingMs,
@@ -105,40 +95,17 @@ function publicRoomState(room) {
     lockedBySocketId: room.lockedBySocketId,
     lockedByTeamId: room.lockedByTeamId,
 
-    teams: Object.values(room.teams).map((t) => ({ id: t.id, name: t.name, score: t.score })),
+    lastBuzz: room.lastBuzz,
     lockedOutTeams: Array.from(room.lockedOutTeams),
 
-    // question info (safe to show to players too: only index + points, not full text if you want)
-    currentQuestionIndex: room.currentQuestionIndex,
-    currentQuestionPoints:
-      room.currentQuestionIndex >= 0 && room.questions[room.currentQuestionIndex]
-        ? room.questions[room.currentQuestionIndex].points
-        : null
-  };
-}
-
-function hostRoomState(room) {
-  const q =
-    room.currentQuestionIndex >= 0 && room.questions[room.currentQuestionIndex]
-      ? room.questions[room.currentQuestionIndex]
-      : null;
-
-  return {
-    ...publicRoomState(room),
-    currentQuestionText: q ? q.text : null,
-    totalQuestions: room.questions.length
+    teams: Object.values(room.teams).map(t => ({ id: t.id, name: t.name, score: t.score }))
   };
 }
 
 function emitRoomState(roomCode) {
   const room = rooms.get(roomCode);
   if (!room) return;
-
-  // everyone gets public state
   io.to(roomCode).emit("roomState", publicRoomState(room));
-
-  // host gets extra info (question text)
-  io.to(`${roomCode}:host`).emit("hostState", hostRoomState(room));
 }
 
 function requireRoom(socket) {
@@ -159,23 +126,25 @@ function isHost(socket, room) {
   return Boolean(socket?.data?.isHost && room);
 }
 
-function resetRound(room) {
+function resetToLobby(room) {
   room.phase = "lobby";
-  room.armedAt = null;
-  room.lockedBySocketId = null;
-  room.lockedByTeamId = null;
 
   room.timerRunning = false;
   room.timerLastTickAt = null;
   room.remainingMs = room.durationMs;
 
+  room.lockedBySocketId = null;
+  room.lockedByTeamId = null;
+
+  room.lastBuzz = null;
   room.lockedOutTeams.clear();
 }
 
-/** Timer loop */
+// Timer loop
 const TICK_MS = 200;
 setInterval(() => {
   const now = Date.now();
+
   for (const room of rooms.values()) {
     if (!room.timerRunning) continue;
 
@@ -187,9 +156,8 @@ setInterval(() => {
     room.remainingMs = Math.max(0, room.remainingMs - delta);
 
     if (room.remainingMs === 0) {
-      room.timerRunning = false;
-      room.timerLastTickAt = null;
-      resetRound(room);
+      // time up ends the round -> back to lobby
+      resetToLobby(room);
     }
 
     emitRoomState(room.roomCode);
@@ -201,34 +169,11 @@ app.get("/", (req, res) => res.sendFile(path.join(__dirname, "public", "index.ht
 app.get("/host", (req, res) => res.sendFile(path.join(__dirname, "public", "host.html")));
 app.get("/play", (req, res) => res.sendFile(path.join(__dirname, "public", "play.html")));
 
-// Create room
+// API: create room
 app.get("/api/rooms/create", (req, res) => {
-  const { roomCode, hostKey } = createRoom();
-  res.json({ roomCode, hostKey });
+  const data = createRoom();
+  res.json(data);
 });
-
-function parseQuestions(rawText) {
-  const lines = String(rawText || "")
-    .split(/\r?\n/)
-    .map((l) => l.trim())
-    .filter((l) => l.length > 0);
-
-  const questions = [];
-  for (const line of lines) {
-    // Format: points|question text
-    const parts = line.split("|");
-    if (parts.length < 2) continue;
-
-    const points = Number(parts[0].trim());
-    const text = parts.slice(1).join("|").trim();
-
-    if (!text) continue;
-    const pts = Number.isFinite(points) && points > 0 && points <= 100 ? Math.floor(points) : 1;
-
-    questions.push({ text, points: pts });
-  }
-  return questions;
-}
 
 io.on("connection", (socket) => {
   socket.on("joinRoom", ({ roomCode, hostKey, playerId } = {}) => {
@@ -238,6 +183,7 @@ io.on("connection", (socket) => {
     const room = rooms.get(code);
     if (!room) return socket.emit("errorMsg", `Room "${code}" does not exist.`);
 
+    // leave old rooms
     for (const r of socket.rooms) if (r !== socket.id) socket.leave(r);
 
     socket.join(code);
@@ -247,14 +193,11 @@ io.on("connection", (socket) => {
 
     if (playerId && typeof playerId === "string") socket.data.playerId = playerId;
 
-    // Host joins an extra private room for host-only updates
-    if (socket.data.isHost) socket.join(`${code}:host`);
-
     room.membersCount += 1;
 
     socket.emit("joinedRoom", { roomCode: code, isHost: socket.data.isHost });
 
-    // refresh persistence: re-apply team if known
+    // refresh-safe team restore
     if (!socket.data.isHost && socket.data.playerId) {
       const existingTeam = room.playerTeams.get(socket.data.playerId);
       if (existingTeam) {
@@ -266,36 +209,13 @@ io.on("connection", (socket) => {
     emitRoomState(code);
   });
 
-  // Host increase team count (2..6)
-  socket.on("hostSetTeamCount", ({ count } = {}) => {
-    const room = requireRoom(socket);
-    if (!room) return;
-    if (!isHost(socket, room)) return socket.emit("errorMsg", "Host only.");
-
-    const desired = Number(count);
-    if (!Number.isInteger(desired) || desired < 2 || desired > room.maxTeams) {
-      return socket.emit("errorMsg", "Team count must be between 2 and 6.");
-    }
-
-    const currentCount = Object.keys(room.teams).length;
-    if (desired < currentCount) return socket.emit("errorMsg", "You can only increase team count for now.");
-    if (desired === currentCount) return;
-
-    for (let i = currentCount + 1; i <= desired; i++) {
-      const id = String(i);
-      room.teams[id] = { id, name: `Team ${i}`, score: 0 };
-    }
-
-    emitRoomState(room.roomCode);
-  });
-
-  // Player chooses team ONCE (server authoritative)
+  // Player chooses team ONCE per room (server authoritative)
   socket.on("setTeam", ({ teamId } = {}) => {
     const room = requireRoom(socket);
     if (!room) return;
 
     if (socket.data.isHost) return socket.emit("errorMsg", "Host cannot select a team.");
-    if (!socket.data.playerId) return socket.emit("errorMsg", "Missing playerId. Refresh /play page.");
+    if (!socket.data.playerId) return socket.emit("errorMsg", "Missing playerId. Refresh /play.");
 
     const existing = room.playerTeams.get(socket.data.playerId);
     if (existing) {
@@ -314,15 +234,38 @@ io.on("connection", (socket) => {
     emitRoomState(room.roomCode);
   });
 
-  // Host: duration
-  socket.on("hostSetDuration", ({ seconds }) => {
+  // Host: increase team count (2..6) - only increases, doesn’t reset scores
+  socket.on("hostSetTeamCount", ({ count } = {}) => {
+    const room = requireRoom(socket);
+    if (!room) return;
+    if (!isHost(socket, room)) return socket.emit("errorMsg", "Host only.");
+
+    const desired = Number(count);
+    if (!Number.isInteger(desired) || desired < 2 || desired > room.maxTeams) {
+      return socket.emit("errorMsg", "Team count must be between 2 and 6.");
+    }
+
+    const current = Object.keys(room.teams).length;
+    if (desired < current) return socket.emit("errorMsg", "Can only increase team count for now.");
+    if (desired === current) return;
+
+    for (let i = current + 1; i <= desired; i++) {
+      const id = String(i);
+      room.teams[id] = { id, name: `Team ${i}`, score: 0 };
+    }
+
+    emitRoomState(room.roomCode);
+  });
+
+  // Host: set round duration
+  socket.on("hostSetDuration", ({ seconds } = {}) => {
     const room = requireRoom(socket);
     if (!room) return;
     if (!isHost(socket, room)) return socket.emit("errorMsg", "Host only.");
 
     const s = Number(seconds);
     if (!Number.isFinite(s) || s <= 0 || s > 600) {
-      return socket.emit("errorMsg", "Duration must be between 1 and 600 seconds.");
+      return socket.emit("errorMsg", "Duration must be 1..600 seconds.");
     }
 
     room.durationMs = Math.floor(s * 1000);
@@ -331,74 +274,35 @@ io.on("connection", (socket) => {
     emitRoomState(room.roomCode);
   });
 
-  // Host: Next Question (starts/advances game)
-  socket.on("hostNextQuestion", () => {
+  // Host: Next Round (paper mode) — reset everything and increment round counter
+  socket.on("hostNextRound", () => {
     const room = requireRoom(socket);
     if (!room) return;
     if (!isHost(socket, room)) return socket.emit("errorMsg", "Host only.");
 
-    if (!room.questions || room.questions.length === 0) {
-      return socket.emit("errorMsg", "No questions loaded. Paste questions and click Load Questions.");
-    }
-
-    if (room.currentQuestionIndex < room.questions.length - 1) {
-      room.currentQuestionIndex += 1;
-    } else {
-      room.currentQuestionIndex = 0; // loop for now
-    }
-
-    resetRound(room);
+    room.roundNumber += 1;
+    resetToLobby(room);
     emitRoomState(room.roomCode);
   });
 
-  // Host: Reset game (optional)
-  socket.on("hostResetGame", () => {
+  // Host: Beep + Start (one button)
+  socket.on("hostBeepStart", () => {
     const room = requireRoom(socket);
     if (!room) return;
     if (!isHost(socket, room)) return socket.emit("errorMsg", "Host only.");
 
-    room.currentQuestionIndex = -1;
-
-    // reset scores
-    for (const t of Object.values(room.teams)) t.score = 0;
-
-    // keep team assignments (or clear if you want later)
-    // room.playerTeams.clear();
-
-    resetRound(room);
-
-    emitRoomState(room.roomCode);
-  });
-
-  // Host: Arm (beep)
-  socket.on("hostArm", () => {
-    const room = requireRoom(socket);
-    if (!room) return;
-    if (!isHost(socket, room)) return socket.emit("errorMsg", "Host only.");
-
+    // start armed round
     room.phase = "armed";
-    room.armedAt = Date.now();
     room.lockedBySocketId = null;
     room.lockedByTeamId = null;
-
+    room.lastBuzz = null;
     room.lockedOutTeams.clear();
 
-    room.timerRunning = false;
-    room.timerLastTickAt = null;
     room.remainingMs = room.durationMs;
-
-    emitRoomState(room.roomCode);
-  });
-
-  socket.on("hostStartTimer", () => {
-    const room = requireRoom(socket);
-    if (!room) return;
-    if (!isHost(socket, room)) return socket.emit("errorMsg", "Host only.");
-    if (room.phase !== "armed") return socket.emit("errorMsg", "Start timer only when ARMED.");
-    if (room.remainingMs <= 0) room.remainingMs = room.durationMs;
-
     room.timerRunning = true;
     room.timerLastTickAt = Date.now();
+
+    io.to(room.roomCode).emit("beep");
     emitRoomState(room.roomCode);
   });
 
@@ -412,7 +316,7 @@ io.on("connection", (socket) => {
     emitRoomState(room.roomCode);
   });
 
-  // Host incorrect -> lock out team
+  // Host: Incorrect — lock out that team for this round, resume timer
   socket.on("hostIncorrect", () => {
     const room = requireRoom(socket);
     if (!room) return;
@@ -425,6 +329,7 @@ io.on("connection", (socket) => {
     room.lockedBySocketId = null;
     room.lockedByTeamId = null;
 
+    // resume timer if time remains
     if (room.remainingMs > 0) {
       room.timerRunning = true;
       room.timerLastTickAt = Date.now();
@@ -433,34 +338,29 @@ io.on("connection", (socket) => {
     emitRoomState(room.roomCode);
   });
 
-  // Host correct -> add points based on question points and end round
+  // Host: Correct — +1 point (paper mode), end round (back to lobby)
   socket.on("hostCorrect", () => {
     const room = requireRoom(socket);
     if (!room) return;
     if (!isHost(socket, room)) return socket.emit("errorMsg", "Host only.");
     if (room.phase !== "locked") return;
 
-    const q =
-      room.currentQuestionIndex >= 0 && room.questions[room.currentQuestionIndex]
-        ? room.questions[room.currentQuestionIndex]
-        : null;
-    const pts = q ? Number(q.points) || 1 : 1;
-
     if (room.lockedByTeamId && room.teams[room.lockedByTeamId]) {
-      room.teams[room.lockedByTeamId].score += pts;
+      room.teams[room.lockedByTeamId].score += 1;
     }
 
-    resetRound(room);
+    resetToLobby(room);
     emitRoomState(room.roomCode);
   });
 
-  socket.on("hostAdjustScore", ({ teamId, delta }) => {
+  socket.on("hostAdjustScore", ({ teamId, delta } = {}) => {
     const room = requireRoom(socket);
     if (!room) return;
     if (!isHost(socket, room)) return socket.emit("errorMsg", "Host only.");
 
     const t = String(teamId || "").trim();
     const d = Number(delta);
+
     if (!room.teams[t] || !Number.isInteger(d) || Math.abs(d) > 100) {
       return socket.emit("errorMsg", "Invalid score adjustment.");
     }
@@ -469,7 +369,7 @@ io.on("connection", (socket) => {
     emitRoomState(room.roomCode);
   });
 
-  // Player buzz
+  // Player buzz (no false-start feature)
   socket.on("buzz", () => {
     const room = requireRoom(socket);
     if (!room) return;
@@ -478,15 +378,23 @@ io.on("connection", (socket) => {
     if (!teamId) return socket.emit("buzzRejected", { reason: "NO_TEAM" });
 
     if (room.phase !== "armed") {
-      return socket.emit("buzzRejected", { reason: room.phase === "lobby" ? "NOT_ARMED" : "LOCKED" });
+      return socket.emit("buzzRejected", { reason: "NOT_ARMED" });
     }
-    if (room.remainingMs <= 0) return socket.emit("buzzRejected", { reason: "TIME_UP" });
-    if (room.lockedOutTeams.has(teamId)) return socket.emit("buzzRejected", { reason: "TEAM_LOCKED_OUT" });
+
+    if (room.remainingMs <= 0) {
+      return socket.emit("buzzRejected", { reason: "TIME_UP" });
+    }
+
+    if (room.lockedOutTeams.has(teamId)) {
+      return socket.emit("buzzRejected", { reason: "TEAM_LOCKED_OUT" });
+    }
 
     room.phase = "locked";
     room.lockedBySocketId = socket.id;
     room.lockedByTeamId = teamId;
+    room.lastBuzz = { by: socket.id, teamId };
 
+    // pause timer while answering
     room.timerRunning = false;
     room.timerLastTickAt = null;
 
@@ -496,56 +404,24 @@ io.on("connection", (socket) => {
 
   socket.on("disconnect", () => {
     const roomCode = socket.data.roomCode;
-    if (roomCode && rooms.has(roomCode)) {
-      const room = rooms.get(roomCode);
-      room.membersCount = Math.max(0, room.membersCount - 1);
+    if (!roomCode || !rooms.has(roomCode)) return;
 
-      if (room.lockedBySocketId === socket.id) {
-        room.lockedBySocketId = null;
-        room.lockedByTeamId = null;
-        room.phase = room.armedAt ? "armed" : "lobby";
-        if (room.phase === "armed" && room.remainingMs > 0) {
-          room.timerRunning = true;
-          room.timerLastTickAt = Date.now();
-        }
+    const room = rooms.get(roomCode);
+    room.membersCount = Math.max(0, room.membersCount - 1);
+
+    // if the locked buzzer left, unlock and resume
+    if (room.lockedBySocketId === socket.id) {
+      room.lockedBySocketId = null;
+      room.lockedByTeamId = null;
+      room.phase = "armed";
+
+      if (room.remainingMs > 0) {
+        room.timerRunning = true;
+        room.timerLastTickAt = Date.now();
       }
-
-      emitRoomState(roomCode);
-    }
-  });
-
-  // Host: replace question set via textarea
-  socket.on("hostSetQuestions", ({ rawText } = {}) => {
-    const room = requireRoom(socket);
-    if (!room) return;
-    if (!isHost(socket, room)) return socket.emit("errorMsg", "Host only.");
-
-    const questions = parseQuestions(rawText);
-
-    if (questions.length === 0) {
-      return socket.emit("errorMsg", "No valid questions found. Use format: points|question text");
     }
 
-    room.questions = questions;
-    room.currentQuestionIndex = -1; // not started
-    resetRound(room);
-
-    socket.emit("hostInfoMsg", `Loaded ${questions.length} questions.`);
-    emitRoomState(room.roomCode);
-  });
-
-  // Host: clear questions (optional)
-  socket.on("hostClearQuestions", () => {
-    const room = requireRoom(socket);
-    if (!room) return;
-    if (!isHost(socket, room)) return socket.emit("errorMsg", "Host only.");
-
-    room.questions = [];
-    room.currentQuestionIndex = -1;
-    resetRound(room);
-
-    socket.emit("hostInfoMsg", "Questions cleared.");
-    emitRoomState(room.roomCode);
+    emitRoomState(roomCode);
   });
 });
 
