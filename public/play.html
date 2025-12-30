@@ -112,7 +112,7 @@
     </div>
 
     <div class="row">
-      <div class="muted">Choose team (only once):</div>
+      <div class="muted">Choose table:</div>
     </div>
 
     <div id="teams" class="teams"></div>
@@ -265,7 +265,8 @@
         const takenBy = taken.get(t.id);
         const isTakenByOther = Boolean(takenBy && takenBy !== myPlayerId);
 
-        btn.textContent = isTakenByOther ? `${t.name} (Taken)` : `${t.name}`;
+        const tableLabel = `Table ${t.id}`;
+        btn.textContent = isTakenByOther ? `${tableLabel} (Taken)` : tableLabel;
 
         // If you already chose a team: disable all team buttons (same as before)
         // If not chosen: disable only teams taken by others
@@ -405,6 +406,8 @@
 
       setMsg("Team selected.", "ok");
 
+      teamsEl.style.display = "none";
+
       // render with correct signature
       if (lastState) renderTeamButtons(lastState.teams, myTeamId, lastState.takenTeams, playerId);
 
@@ -450,6 +453,8 @@
       timeEl.textContent = formatMs(state.remainingMs);
 
       const chosenTeam = myTeamId || (currentRoom ? getSavedTeam(currentRoom) : null);
+
+      teamsEl.style.display = chosenTeam ? "none" : "flex";
 
       if (chosenTeam) {
         teamEl.textContent = `${teamLabel(chosenTeam)}`;
