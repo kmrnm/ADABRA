@@ -11,6 +11,11 @@ app.use(express.static("public"));
 
 const rooms = new Map(); // roomCode -> roomState
 
+function touchRoom(room) {
+  if (!room) return;
+  room.lastActivityAt = Date.now();
+}
+
 function randomString(len = 20) {
   const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
   let out = "";
@@ -49,6 +54,7 @@ function createRoom() {
     roomCode,
     hostKey,
     createdAt: Date.now(),
+    lastActivityAt: Date.now(),
     membersCount: 0,
 
     teamTaken: new Map(),
@@ -178,6 +184,23 @@ setInterval(() => {
   }
 }, TICK_MS);
 
+const ROOM_TTL = 30 * 60 * 1000;
+const ROOM_CLEANUP_MS = 60 * 1000;
+
+setInterval(() => {
+  const now = Date.now();
+
+  for (const [code, room] of rooms.entries()) {
+    const idleMs = now - (room.lastActivityAt || room.createdAt || now);
+
+    if (idleMs > ROOM_TTL || room.membersCount === 0) {
+      rooms.delete(code);
+      console.log(`Deleted room ${code} (idleMs=${idleMs}, members=${room.membersCount})`);
+    }
+  }
+}, ROOM_CLEANUP_MS);
+
+
 // Pages
 app.get("/", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
 app.get("/host", (req, res) => res.sendFile(path.join(__dirname, "public", "host.html")));
@@ -229,6 +252,8 @@ io.on("connection", (socket) => {
     const room = requireRoom(socket);
     if (!room) return;
 
+    touchRoom(room);
+
     if (socket.data.isHost) return socket.emit("errorMsg", "Host cannot select a team.");
     if (!socket.data.playerId) return socket.emit("errorMsg", "Missing playerId. Refresh /play.");
 
@@ -261,6 +286,8 @@ io.on("connection", (socket) => {
   socket.on("setTeamName", ({ name } = {}) => {
     const room = requireRoom(socket);
     if (!room) return;
+
+    touchRoom(room);
 
     if (socket.data.isHost) return socket.emit("errorMsg", "Host cannot set team name.");
 
@@ -298,6 +325,9 @@ io.on("connection", (socket) => {
   socket.on("hostSetTeamCount", ({ count } = {}) => {
     const room = requireRoom(socket);
     if (!room) return;
+
+    touchRoom(room);
+
     if (!isHost(socket, room)) return socket.emit("errorMsg", "Host only.");
 
     const desired = Number(count);
@@ -321,6 +351,9 @@ io.on("connection", (socket) => {
   socket.on("hostSetDuration", ({ seconds } = {}) => {
     const room = requireRoom(socket);
     if (!room) return;
+
+    touchRoom(room);
+
     if (!isHost(socket, room)) return socket.emit("errorMsg", "Host only.");
 
     const s = Number(seconds);
@@ -338,6 +371,9 @@ io.on("connection", (socket) => {
   socket.on("hostNextRound", () => {
     const room = requireRoom(socket);
     if (!room) return;
+
+    touchRoom(room);
+
     if (!isHost(socket, room)) return socket.emit("errorMsg", "Host only.");
 
     room.roundNumber += 1;
@@ -349,6 +385,9 @@ io.on("connection", (socket) => {
   socket.on("hostBeepStart", () => {
     const room = requireRoom(socket);
     if (!room) return;
+
+    touchRoom(room);
+
     if (!isHost(socket, room)) return socket.emit("errorMsg", "Host only.");
 
     //Round changes when host beeps :)
@@ -374,6 +413,9 @@ io.on("connection", (socket) => {
   socket.on("hostPauseTimer", () => {
     const room = requireRoom(socket);
     if (!room) return;
+
+    touchRoom(room);
+
     if (!isHost(socket, room)) return socket.emit("errorMsg", "Host only.");
 
     room.timerRunning = false;
@@ -385,6 +427,9 @@ io.on("connection", (socket) => {
   socket.on("hostIncorrect", () => {
     const room = requireRoom(socket);
     if (!room) return;
+
+    touchRoom(room);
+
     if (!isHost(socket, room)) return socket.emit("errorMsg", "Host only.");
     if (room.phase !== "locked") return;
 
@@ -407,6 +452,9 @@ io.on("connection", (socket) => {
   socket.on("hostCorrect", () => {
     const room = requireRoom(socket);
     if (!room) return;
+
+    touchRoom(room);
+
     if (!isHost(socket, room)) return socket.emit("errorMsg", "Host only.");
     if (room.phase !== "locked") return;
 
@@ -421,6 +469,9 @@ io.on("connection", (socket) => {
   socket.on("hostAdjustScore", ({ teamId, delta } = {}) => {
     const room = requireRoom(socket);
     if (!room) return;
+
+    touchRoom(room);
+
     if (!isHost(socket, room)) return socket.emit("errorMsg", "Host only.");
 
     const t = String(teamId || "").trim();
@@ -438,6 +489,8 @@ io.on("connection", (socket) => {
   socket.on("buzz", () => {
     const room = requireRoom(socket);
     if (!room) return;
+
+    touchRoom(room);
 
     const teamId = socket.data.teamId;
     const playerId = socket.data.playerId;
