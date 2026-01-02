@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -16,6 +17,7 @@
       flex-direction: column;
       gap: 10px;
     }
+
     .tagline {
       color: var(--muted);
       font-weight: 700;
@@ -67,7 +69,7 @@
     }
 
     .howItem {
-      background: rgba(255,255,255,.05);
+      background: rgba(255, 255, 255, .05);
       border: 1px solid var(--line);
       border-radius: var(--r-md);
       padding: 12px;
@@ -80,9 +82,17 @@
     }
 
     @media (max-width: 760px) {
-      .joinRow { grid-template-columns: 1fr; }
-      .btn-cta { width: 100%; }
-      .how { grid-template-columns: 1fr; }
+      .joinRow {
+        grid-template-columns: 1fr;
+      }
+
+      .btn-cta {
+        width: 100%;
+      }
+
+      .how {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
@@ -130,6 +140,114 @@
             <div class="mini">Players choose a table and buzz on the start signal.</div>
           </div>
         </div>
+
+        <section class="rulesSection" id="rules">
+          <div class="rulesCard">
+            <div class="rulesHeader">
+              <h2 class="rulesTitle">Game Rules & How to Play</h2>
+              <p class="rulesSubtitle">
+                ADABRA is a fast-paced, team-based quiz game that rewards knowledge, coordination, and speed.
+              </p>
+            </div>
+
+            <details class="rulesDetails" open>
+              <summary class="rulesSummary">
+                <span>Read the rules</span>
+                <span class="rulesChevron" aria-hidden="true">▾</span>
+              </summary>
+
+              <div class="rulesBody">
+                <div class="rulesGrid">
+                  <div class="rulesBlock">
+                    <h3>Teams & Roles</h3>
+                    <ul>
+                      <li>A game consists of <strong>2 to 6 teams</strong>.</li>
+                      <li>Each team appoints one <strong>captain</strong>.</li>
+                      <li>The captain makes the final decision on:
+                        <ul>
+                          <li>Who will answer the question, or</li>
+                          <li>Which answer will be submitted after a team brainstorm.</li>
+                        </ul>
+                      </li>
+                      <li>Each team also assigns a <strong>buzzer player</strong>, selected by the captain.</li>
+                    </ul>
+                  </div>
+
+                  <div class="rulesBlock">
+                    <h3>Devices</h3>
+                    <ul>
+                      <li><strong>One device per team</strong> is sufficient.</li>
+                      <li>This device is used exclusively by the buzzer player to press the <strong>Buzz</strong>
+                        button.</li>
+                      <li>The buzzer player should only press when the team is confident that:
+                        <ul>
+                          <li>A team member knows the answer, or</li>
+                          <li>The team’s final answer is ready after discussion.</li>
+                        </ul>
+                      </li>
+                    </ul>
+                  </div>
+
+                  <div class="rulesBlock">
+                    <h3>Game Flow</h3>
+                    <ul>
+                      <li>The host (presenter) creates the game room and controls the flow.</li>
+                      <li>For each question, the host sets a timer, visible on the shared game screen.</li>
+                      <li>All teams see the same question and countdown in real time.</li>
+                    </ul>
+                  </div>
+
+                  <div class="rulesBlock">
+                    <h3>Buzzing & Answering</h3>
+                    <ul>
+                      <li>The <strong>first team</strong> to press the Buzz button earns the right to answer.</li>
+                      <li>If that team answers correctly:
+                        <ul>
+                          <li>They score <strong>one point</strong>.</li>
+                          <li>All other teams lose the chance to answer that question.</li>
+                          <li>The game proceeds immediately to the next round.</li>
+                        </ul>
+                      </li>
+                      <li>If the buzzing team answers incorrectly:
+                        <ul>
+                          <li>Other teams may buzz in and attempt an answer while time remains.</li>
+                        </ul>
+                      </li>
+                    </ul>
+                  </div>
+
+                  <div class="rulesBlock">
+                    <h3>Time Rules</h3>
+                    <ul>
+                      <li>The timer applies to all teams.</li>
+                      <li>When the timer reaches zero:
+                        <ul>
+                          <li>No team may answer, regardless of buzz order.</li>
+                        </ul>
+                      </li>
+                      <li>Effective time management is critical—waiting too long can cost everyone the question.</li>
+                    </ul>
+                  </div>
+
+                  <div class="rulesBlock">
+                    <h3>Key Strategy</h3>
+                    <ul>
+                      <li><strong>Speed</strong> matters, but <strong>accuracy</strong> matters more.</li>
+                      <li>Buzzing too early without a solid answer is risky.</li>
+                      <li>Coordinated teamwork, efficient brainstorming, and quick decision-making win games.</li>
+                    </ul>
+
+                    <div class="rulesCallout">
+                      <strong>Press fast. Think smart. Use your time wisely.</strong><br />
+                      Good luck—and enjoy the game with ADABRA.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </details>
+          </div>
+        </section>
+
       </div>
     </div>
   </div>
@@ -194,4 +312,5 @@
     }
   </script>
 </body>
+
 </html>
