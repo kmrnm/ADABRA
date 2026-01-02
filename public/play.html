@@ -112,6 +112,18 @@
     const beepAudio = document.getElementById("beepAudio");
     const buzzAudio = document.getElementById("buzzAudio");
 
+    let audioUnlocked = false;
+
+    function unlockAudio() {
+      if (audioUnlocked) return;
+      audioUnlocked = true;
+      beepAudio.volume = 1;
+      beepAudio.play().then(() => {
+        beepAudio.pause();
+        beepAudio.currentTime = 0;
+      }).catch(() => { });
+    }
+
     let currentRoom = null;
     let lastState = null;
     let myTeamId = null; // real team id: "1", "2", ...
@@ -292,9 +304,12 @@
       joinRoom(queryRoom);
     }
 
-    joinBtn.onclick = () => joinRoom(roomInput.value);
+    joinBtn.onclick = () => {
+      unlockAudio();
+      joinRoom(roomInput.value);
+    };
 
-    // ---- NEW: spacebar triggers buzz ----
+    // spacebar triggers buzz
     // (prevents page scroll, and triggers buzz if allowed)
     window.addEventListener("keydown", (e) => {
       if (e.code === "Space") {
@@ -303,13 +318,14 @@
       }
     });
 
-    // ---- NEW: play local buzz sound when user clicks buzz ----
+    // play local buzz sound when user clicks buzz
     function playBuzzSound() {
       buzzAudio.currentTime = 0;
       buzzAudio.play().catch(() => { });
     }
 
     buzzBtn.onclick = () => {
+      unlockAudio();
       if (buzzBtn.disabled) return;
       playBuzzSound();
       hardDisableBuzzNow();
@@ -328,7 +344,10 @@
       stickyMsg = null;
 
       beepAudio.currentTime = 0;
-      beepAudio.play().catch(() => { });
+      beepAudio.currentTime = 0;
+      beepAudio.play().catch(err => {
+        console.warn("Beep failed:", err);
+      });
     });
 
     socket.on("timeUp", () => {
