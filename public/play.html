@@ -35,6 +35,7 @@
           <span class="pill">Room: <strong id="currentRoom" class="muted">none</strong></span>
           <span class="pill">Team: <strong id="team" class="muted">none</strong></span>
           <span class="pill">Phase: <strong id="phase" class="muted">—</strong></span>
+          <span class="pill">Round: <strong id="round" class="muted">0</strong></span>
           <span class="pill">Score: <strong id="myScore" class="muted">—</strong></span>
         </div>
 
@@ -99,6 +100,7 @@
     const phaseEl = document.getElementById("phase");
     const timeEl = document.getElementById("time");
     const myScoreEl = document.getElementById("myScore");
+    const roundEl = document.getElementById("round");
 
     const nameBox = document.getElementById("nameBox");
     const teamNameInput = document.getElementById("teamNameInput");
@@ -434,6 +436,9 @@
         teamEl.textContent = "none";
         teamEl.className = "muted";
       }
+
+      roundEl.textContent = String(state.roundNumber ?? 0);
+      roundEl.className = "ok";
 
       renderTeamButtons(state.teams, chosenTeam, state.takenTeams, playerId);
 
