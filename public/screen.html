@@ -138,7 +138,39 @@
                 lockedBannerEl.style.display = "none";
             }
         });
+
+        const TEAM_COLORS = ["#7c5cff", "#31d3ff", "#19d17f", "#ffd400", "#ff5a00", "#ff3d88"];
+        function teamColor(teamId) {
+            const n = Number(teamId);
+            const i = Number.isFinite(n) ? ((n - 1) % TEAM_COLORS.length) : 0;
+            return TEAM_COLORS[i];
+        }
+
+        const confettiWrap = document.getElementById("confettiWrap");
+
+        function burstConfetti(color) {
+            if (!confettiWrap) return;
+            const w = window.innerWidth;
+            const x0 = w * 0.5;
+            for (let i = 0; i < 18; i++) {
+                const el = document.createElement("div");
+                el.className = "confetti";
+                el.style.background = color;
+                el.style.left = (x0 + (Math.random() * 240 - 120)) + "px";
+                el.style.top = (80 + Math.random() * 40) + "px";
+                el.style.transform = `rotate(${Math.random() * 180}deg)`;
+                confettiWrap.appendChild(el);
+                setTimeout(() => el.remove(), 950);
+            }
+        }
+        
+        socket.on("correctFx", ({ teamId }) => {
+            burstConfetti(teamColor(teamId));
+        });
+
     </script>
+
+    <div id="confettiWrap" class="confettiWrap"></div>
 </body>
 
 </html>
