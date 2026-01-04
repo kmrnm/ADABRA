@@ -117,9 +117,12 @@
                 const row = document.createElement("div");
                 row.className = "screenTeamRow";
                 row.innerHTML = `
-          <div class="screenTeamName">${t.name}</div>
-          <div class="screenTeamScore">${t.score}</div>
-        `;
+                <div class="screenTeamName">
+                    <span class="teamAvatar" style="margin-left:5px; background:${teamColor(t.id)}"></span>
+                    <span style="margin-left:10px;">${t.name}</span>
+                </div>
+                <div class="screenTeamScore">${t.score}</div>
+                `;
                 scoreboardEl.appendChild(row);
             }
         }
