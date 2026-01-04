@@ -167,7 +167,7 @@ setInterval(() => {
 
   for (const room of rooms.values()) {
     if (!room.timerRunning) continue;
-
+    touchRoom(room);
     if (room.timerLastTickAt == null) room.timerLastTickAt = now;
     const delta = now - room.timerLastTickAt;
     if (delta <= 0) continue;
