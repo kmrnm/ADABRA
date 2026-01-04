@@ -50,42 +50,43 @@ function createRoom() {
   const roomCode = createUniqueRoomCode();
   const hostKey = randomString(24);
 
-  rooms.set(roomCode, {
-    roomCode,
-    hostKey,
-    createdAt: Date.now(),
-    lastActivityAt: Date.now(),
-    membersCount: 0,
+    rooms.set(roomCode, {
+      roomCode,
+      hostKey,
+      createdAt: Date.now(),
+      lastActivityAt: Date.now(),
+      timeUpAt: null,
+      membersCount: 0,
 
-    teamTaken: new Map(),
-    teamNameLocked: new Set(), // teamId: can rename only once per session
+      teamTaken: new Map(),
+      teamNameLocked: new Set(), // teamId: can rename only once per session
 
-    // round state
-    phase: "lobby", // "lobby" | "armed" | "locked"
-    roundNumber: 0,
+      // round state
+      phase: "lobby", // "lobby" | "armed" | "locked"
+      roundNumber: 0,
 
-    // timing
-    durationMs: 15000,
-    remainingMs: 15000,
-    timerRunning: false,
-    timerLastTickAt: null,
+      // timing
+      durationMs: 15000,
+      remainingMs: 15000,
+      timerRunning: false,
+      timerLastTickAt: null,
 
-    // buzz state
-    lockedBySocketId: null,
-    lockedByTeamId: null,
-    lastBuzz: null, // { by, teamId } or null
-    lockedByPlayerId: null,
+      // buzz state
+      lockedBySocketId: null,
+      lockedByTeamId: null,
+      lastBuzz: null, // { by, teamId } or null
+      lockedByPlayerId: null,
 
-    // teams
-    maxTeams: 6,
-    teams: makeTeams(2),
+      // teams
+      maxTeams: 6,
+      teams: makeTeams(2),
 
-    // per-round lockout: teams that cannot buzz again after incorrect
-    lockedOutTeams: new Set(),
+      // per-round lockout: teams that cannot buzz again after incorrect
+      lockedOutTeams: new Set(),
 
-    // persistent player identity for team choice (refresh-safe)
-    playerTeams: new Map(), // playerId -> teamId
-  });
+      // persistent player identity for team choice (refresh-safe)
+      playerTeams: new Map(), // playerId -> teamId
+    });
 
   return { roomCode, hostKey };
 }
@@ -103,6 +104,7 @@ function publicRoomState(room) {
     durationMs: room.durationMs,
     remainingMs: room.remainingMs,
     timerRunning: room.timerRunning,
+    timeUpAt: room.timeUpAt,
 
     lockedBySocketId: room.lockedBySocketId,
     lockedByTeamId: room.lockedByTeamId,
@@ -176,8 +178,15 @@ setInterval(() => {
     room.remainingMs = Math.max(0, room.remainingMs - delta);
 
     if (room.remainingMs === 0) {
-      io.to(room.roomCode).emit("timeUp");   // notify everyone
+      room.timeUpAt = Date.now();          // <- sticky "time up"
+      room.timerRunning = false;
+      room.timerLastTickAt = null;
+
       resetToLobby(room);
+
+      room.remainingMs = 0;               // <- freeze at 0 until host action
+      emitRoomState(room.roomCode);
+      continue;
     }
 
     emitRoomState(room.roomCode);
@@ -381,6 +390,7 @@ io.on("connection", (socket) => {
     if (!isHost(socket, room)) return socket.emit("errorMsg", "Host only.");
 
     room.roundNumber += 1;
+    room.timeUpAt = null;
     resetToLobby(room);
     emitRoomState(room.roomCode);
   });
@@ -393,6 +403,8 @@ io.on("connection", (socket) => {
     touchRoom(room);
 
     if (!isHost(socket, room)) return socket.emit("errorMsg", "Host only.");
+
+    room.timeUpAt = null;
 
     //Round changes when host beeps :)
     room.roundNumber += 1;
