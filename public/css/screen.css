@@ -172,3 +172,61 @@ body.screen {
   -webkit-backdrop-filter: blur(14px);
   box-shadow: 0 30px 80px rgba(0,0,0,.45);
 }
+
+/* Mobile view */
+html, body {
+  width: 100%;
+  overflow-x: hidden; 
+}
+
+body.screen {
+  overflow-x: hidden;
+}
+
+/* Make container fit small screens */
+body.screen .container {
+  max-width: 100%;
+  padding: 16px 12px 28px;
+}
+
+body.screen .screenCard {
+  width: 100%;
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+body.screen .screenHeader {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  align-items: center;
+}
+
+@media (max-width: 880px) {
+  body.screen .screenHeader {
+    grid-template-columns: 1fr;
+    text-align: center;
+  }
+}
+
+body.screen .screenBody {
+  display: grid;
+  grid-template-columns: 1fr 0.9fr;
+  gap: 14px;
+}
+
+@media (max-width: 900px) {
+  body.screen .screenBody {
+    grid-template-columns: 1fr;
+  }
+}
+
+.confettiWrap {
+  overflow: hidden;
+}
+
+body.screen::before,
+body.screen::after {
+  max-width: 100%;
+  overflow: hidden;
+}
