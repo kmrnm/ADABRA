@@ -461,7 +461,6 @@ io.on("connection", (socket) => {
     if (room.lockedByTeamId && room.teams[room.lockedByTeamId]) {
       room.teams[room.lockedByTeamId].score += 1;
     }
-
     resetToLobby(room);
     emitRoomState(room.roomCode);
   });
