@@ -344,8 +344,16 @@
             buzzAudio.play().catch(() => { });
         });
 
+        let statusTimeoutId = null;
+
+        function setStatusTemp(text, cls, ms = 1200) {
+            if (statusTimeoutId) clearTimeout(statusTimeoutId);
+            setStatus(text, cls);
+            statusTimeoutId = setTimeout(showRoomCodeStatus, ms);
+        }
+
         socket.on("timeUp", () => {
-            setStatus("Time is up.", "err");
+            setStatusTemp("Time is up.", "err", 1500);
         });
 
         socket.on("errorMsg", (text) => setStatus(text, "err"));
