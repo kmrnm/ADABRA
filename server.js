@@ -178,7 +178,7 @@ setInterval(() => {
     room.remainingMs = Math.max(0, room.remainingMs - delta);
 
     if (room.remainingMs === 0) {
-      room.timeUpAt = Date.now(); 
+      room.timeUpAt = Date.now();
 
       room.timerRunning = false;
       room.timerLastTickAt = null;
@@ -454,9 +454,10 @@ io.on("connection", (socket) => {
     if (room.lockedByTeamId) room.lockedOutTeams.add(room.lockedByTeamId);
 
     room.phase = "armed";
-    room.firstBuzzTeamId = null;
     room.lockedBySocketId = null;
     room.lockedByTeamId = null;
+    room.lastBuzz = null;
+    room.lockedByPlayerId = null;
 
     // resume timer if time remains
     if (room.remainingMs > 0) {

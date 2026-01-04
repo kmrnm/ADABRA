@@ -165,11 +165,15 @@
 
             }
 
-            if (state.phase === "locked" && state.lastBuzz) {
-                lockedBannerEl.style.display = "block";
-                lockedBannerEl.textContent = `${teamNameFromState(state, state.lastBuzz.teamId)} answering`;
+            if (state.phase !== "locked" || !state.lastBuzz) {
+                lastBuzzEl.textContent = "—";
             } else {
-                lockedBannerEl.style.display = "none";
+                const name = teamNameFromState(state, state.lastBuzz.teamId);
+                const isFirst =
+                    state.firstBuzzTeamId &&
+                    String(state.firstBuzzTeamId) === String(state.lastBuzz.teamId);
+
+                lastBuzzEl.textContent = isFirst ? `${name} buzzed first` : `${name} buzzed`;
             }
         });
 
