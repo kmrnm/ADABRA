@@ -79,6 +79,13 @@
             return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}.${t}`;
         }
 
+        function updateTimerWarning(el, ms, phase) {
+            const danger = phase === "armed" && ms <= 3000 && ms > 0;
+            el.classList.toggle("timerDanger", danger);
+            el.classList.toggle("timerPulse", danger);
+        }
+
+
         function getQueryRoom() {
             const params = new URLSearchParams(location.search);
             const r = params.get("room");
@@ -119,6 +126,7 @@
 
             roundEl.textContent = String(state.roundNumber ?? 0);
             timeEl.textContent = formatMs(state.remainingMs || 0);
+            updateTimerWarning(timeEl, state.remainingMs || 0, state.phase);
 
             renderScoreboard(state.teams);
 
@@ -163,7 +171,7 @@
                 setTimeout(() => el.remove(), 950);
             }
         }
-        
+
         socket.on("correctFx", ({ teamId }) => {
             burstConfetti(teamColor(teamId));
         });
