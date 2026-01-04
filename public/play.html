@@ -128,6 +128,16 @@
 
     let currentRoom = null;
     let lastState = null;
+
+    window.addEventListener("beforeunload", (e) => {
+      const active = lastState && (lastState.phase === "armed" || lastState.phase === "locked");
+      const hasTeam = Boolean(myTeamId || (currentRoom ? getSavedTeam(currentRoom) : null));
+      if (active && hasTeam) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    });
+
     let myTeamId = null; // real team id: "1", "2", ...
 
     let mySocketId = null;
