@@ -245,9 +245,8 @@
         const tableLabel = `Table ${t.id}`;
         btn.textContent = isTakenByOther ? `${tableLabel} (Taken)` : tableLabel;
 
-        // If you already chose a team: disable all team buttons (same as before)
-        // If not chosen: disable only teams taken by others
         btn.disabled = Boolean(chosenTeamId) || isTakenByOther;
+        btn.classList.toggle("isTaken", isTakenByOther);
 
         btn.onclick = () => {
           if (chosenTeamId || isTakenByOther) return;

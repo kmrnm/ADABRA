@@ -255,3 +255,11 @@ body.play #buzz.buzzFlash{
   50%  { transform: scale(1.02); filter: brightness(1.08); }
   100% { transform: scale(1); filter: brightness(1); }
 }
+/* disabled button design */
+body.play .teamBtn.isTaken {
+  opacity: .45;
+  cursor: not-allowed;
+  transform: none !important;
+  filter: grayscale(.25);
+}
+

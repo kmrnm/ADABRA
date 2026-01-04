@@ -157,10 +157,12 @@
             } else {
                 const name = teamNameFromState(state, state.lastBuzz.teamId);
                 const isFirst =
+                    state.phase === "locked" &&
                     state.firstBuzzTeamId &&
                     String(state.firstBuzzTeamId) === String(state.lastBuzz.teamId);
 
                 lastBuzzEl.textContent = isFirst ? `${name} buzzed first` : `${name} buzzed`;
+
             }
 
             if (state.phase === "locked" && state.lastBuzz) {
