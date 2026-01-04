@@ -67,6 +67,11 @@
     <script>
         const socket = io();
 
+        socket.on("errorMsg", (text) => {
+            console.warn("Screen errorMsg:", text);
+        });
+
+
         const roomCodeEl = document.getElementById("roomCode");
         const roundEl = document.getElementById("round");
         const timeEl = document.getElementById("time");
@@ -84,8 +89,10 @@
             return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}.${t}`;
         }
 
-        function updateTimerWarning(el, ms, phase) {
-            const danger = phase === "armed" && ms <= 3000 && ms > 0;
+        function updateTimerWarning(el, ms, phase, isTimeUp) {
+            const last3 = (phase === "armed" && ms <= 3000 && ms > 0);
+            const danger = Boolean(isTimeUp) || last3;
+
             el.classList.toggle("timerDanger", danger);
             el.classList.toggle("timerPulse", danger);
         }
@@ -121,8 +128,10 @@
             currentRoom = roomCode;
             roomCodeEl.textContent = roomCode || "—";
             if (!roomCode) return;
-            socket.emit("joinRoom", { roomCode }); // spectator is just a normal client (not host)
+
+            socket.emit("joinRoom", { roomCode });
         }
+
 
         joinRoom(getQueryRoom());
 
@@ -131,22 +140,26 @@
 
             roundEl.textContent = String(state.roundNumber ?? 0);
             timeEl.textContent = formatMs(state.remainingMs || 0);
-            updateTimerWarning(timeEl, state.remainingMs || 0, state.phase);
+
             const isTimeUp = Boolean(state.timeUpAt);
-            timeUpBannerEl.style.display = isTimeUp ? "block" : "none";
-            timeEl.classList.toggle("timerDanger", isTimeUp);
-            timeEl.classList.toggle("timerPulse", isTimeUp);
+            updateTimerWarning(timeEl, state.remainingMs || 0, state.phase, isTimeUp);
+            if (typeof timeUpBannerEl !== "undefined" && timeUpBannerEl) {
+                timeUpBannerEl.style.display = isTimeUp ? "block" : "none";
+            }
+
             renderScoreboard(state.teams);
 
             if (!state.lastBuzz) {
                 lastBuzzEl.textContent = "—";
             } else {
                 const name = teamNameFromState(state, state.lastBuzz.teamId);
-                const isFirst = state.firstBuzzTeamId && String(state.firstBuzzTeamId) === String(state.lastBuzz.teamId);
+                const isFirst =
+                    state.firstBuzzTeamId &&
+                    String(state.firstBuzzTeamId) === String(state.lastBuzz.teamId);
+
                 lastBuzzEl.textContent = isFirst ? `${name} buzzed first` : `${name} buzzed`;
             }
 
-            // LOCKED banner
             if (state.phase === "locked" && state.lastBuzz) {
                 lockedBannerEl.style.display = "block";
                 lockedBannerEl.textContent = `${teamNameFromState(state, state.lastBuzz.teamId)} answering`;
@@ -154,6 +167,7 @@
                 lockedBannerEl.style.display = "none";
             }
         });
+
 
         const TEAM_COLORS = ["#7c5cff", "#31d3ff", "#19d17f", "#ffd400", "#ff5a00", "#ff3d88"];
         function teamColor(teamId) {
