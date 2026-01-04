@@ -458,11 +458,20 @@ io.on("connection", (socket) => {
     if (!isHost(socket, room)) return socket.emit("errorMsg", "Host only.");
     if (room.phase !== "locked") return;
 
+    let scoredTeamId = null;
+
     if (room.lockedByTeamId && room.teams[room.lockedByTeamId]) {
       room.teams[room.lockedByTeamId].score += 1;
+      scoredTeamId = String(room.lockedByTeamId);
     }
+    
+    if (scoredTeamId) {
+      io.to(room.roomCode).emit("correctFx", { teamId: scoredTeamId });
+    }
+
     resetToLobby(room);
     emitRoomState(room.roomCode);
+
   });
 
   socket.on("hostAdjustScore", ({ teamId, delta } = {}) => {
@@ -481,7 +490,6 @@ io.on("connection", (socket) => {
     }
 
     room.teams[t].score += d;
-    io.to(roomCode).emit("correctFx", { teamId: room.firstBuzzTeamId || (room.lastBuzz && room.lastBuzz.teamId) });
     emitRoomState(room.roomCode);
   });
 
