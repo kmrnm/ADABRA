@@ -435,11 +435,19 @@ io.on("connection", (socket) => {
     touchRoom(room);
 
     if (!isHost(socket, room)) return socket.emit("errorMsg", "Host only.");
-
     room.timerRunning = false;
     room.timerLastTickAt = null;
+    room.remainingMs = room.durationMs;
+    room.phase = "lobby";
+    room.lastBuzz = null;
+    room.lockedByTeamId = null;
+    room.lockedByPlayerId = null;
+    room.lockedOutTeams.clear();
+    room.firstBuzzTeamId = null;
+
     emitRoomState(room.roomCode);
   });
+
 
   // Host: Incorrect — lock out that team for this round, resume timer
   socket.on("hostIncorrect", () => {
