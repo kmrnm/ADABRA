@@ -1,6 +1,6 @@
 # Contributing to ADABRA
 
-Thank you for your interest in **ADABRA (ADA Brain Ring Association)**.
+Thank you for your interest in **ADABRA (ADA Brain Ring Application)**.
 
 We welcome bug fixes, UI improvements, and new features.
 
