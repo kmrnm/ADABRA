@@ -363,6 +363,16 @@
 
             roundEl.textContent = String(state.roundNumber ?? 0);
 
+            if (typeof window._lastRoundSeen === "undefined") window._lastRoundSeen = state.roundNumber ?? 0;
+            const nowRound = state.roundNumber ?? 0;
+
+            if (nowRound !== window._lastRoundSeen || state.phase === "lobby" || state.phase === "armed") {
+                if (statusTimeoutId) clearTimeout(statusTimeoutId);
+                showRoomCodeStatus();
+                window._lastRoundSeen = nowRound;
+            }
+
+
             phaseEl.textContent = state.phase;
             phaseEl.className = state.phase === "armed" ? "ok" : "muted";
 
