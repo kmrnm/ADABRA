@@ -482,6 +482,7 @@ io.on("connection", (socket) => {
     }
 
     room.teams[t].score += d;
+    io.to(roomCode).emit("correctFx", { teamId: room.firstBuzzTeamId || (room.lastBuzz && room.lastBuzz.teamId) });
     emitRoomState(room.roomCode);
   });
 
