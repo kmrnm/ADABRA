@@ -182,7 +182,7 @@
             if (!confettiWrap) return;
             const w = window.innerWidth;
             const x0 = w * 0.5;
-            for (let i = 0; i < 18; i++) {
+            for (let i = 0; i < 36; i++) {
                 const el = document.createElement("div");
                 el.className = "confetti";
                 el.style.background = color;
@@ -190,7 +190,7 @@
                 el.style.top = (80 + Math.random() * 40) + "px";
                 el.style.transform = `rotate(${Math.random() * 180}deg)`;
                 confettiWrap.appendChild(el);
-                setTimeout(() => el.remove(), 950);
+                setTimeout(() => el.remove(), 1750);
             }
         }
 

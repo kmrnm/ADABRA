@@ -607,14 +607,15 @@ input:focus, select:focus {
 
 .confetti {
   position: absolute;
-  width: 10px;
-  height: 6px;
-  border-radius: 2px;
-  opacity: 0.95;
-  animation: confettiFall 850ms ease-out forwards;
+  width: 14px;
+  height: 10px;
+  border-radius: 3px;
+  opacity: 0.98;
+  animation: confettiFall 1600ms ease-out forwards;
 }
 
 @keyframes confettiFall {
   0%   { transform: translateY(0) rotate(0deg); opacity: 1; }
-  100% { transform: translateY(320px) rotate(240deg); opacity: 0; }
+  70%  { opacity: 1; }
+  100% { transform: translateY(520px) rotate(420deg); opacity: 0; }
 }
