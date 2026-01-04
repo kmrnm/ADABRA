@@ -193,7 +193,11 @@ setInterval(() => {
   for (const [code, room] of rooms.entries()) {
     const idleMs = now - (room.lastActivityAt || room.createdAt || now);
 
-    if (idleMs > ROOM_TTL || room.membersCount === 0) {
+    const EMPTY_GRACE_MS = 2 * 60 * 1000; // 2 minutes grace for newly created rooms
+    const emptyTooLong = room.membersCount === 0 && idleMs > EMPTY_GRACE_MS;
+    const idleTooLong = idleMs > ROOM_TTL;
+
+    if (idleTooLong || emptyTooLong) {
       rooms.delete(code);
       console.log(`Deleted room ${code} (idleMs=${idleMs}, members=${room.membersCount})`);
     }
@@ -464,7 +468,7 @@ io.on("connection", (socket) => {
       room.teams[room.lockedByTeamId].score += 1;
       scoredTeamId = String(room.lockedByTeamId);
     }
-    
+
     if (scoredTeamId) {
       io.to(room.roomCode).emit("correctFx", { teamId: scoredTeamId });
     }
