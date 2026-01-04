@@ -454,6 +454,7 @@ io.on("connection", (socket) => {
     if (room.lockedByTeamId) room.lockedOutTeams.add(room.lockedByTeamId);
 
     room.phase = "armed";
+    room.firstBuzzTeamId = null;
     room.lockedBySocketId = null;
     room.lockedByTeamId = null;
 
