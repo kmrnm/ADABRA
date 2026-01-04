@@ -112,6 +112,7 @@
 
     <audio id="beepAudio" src="/sounds/beep.mp3" preload="auto"></audio>
     <audio id="buzzAudio" src="/sounds/buzz.mp3" preload="auto"></audio>
+    <audio id="tickAudio" src="/sounds/tick.mp3" preload="auto"></audio>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -145,6 +146,9 @@
 
         const beepAudio = document.getElementById("beepAudio");
         const buzzAudio = document.getElementById("buzzAudio");
+
+        const tickAudio = document.getElementById("tickAudio");
+        let tickedThisRound = false;
 
         const openScreenBtn = document.getElementById("openScreen");
 
@@ -374,6 +378,13 @@
             if (typeof window._lastRoundSeen === "undefined") window._lastRoundSeen = state.roundNumber ?? 0;
             const nowRound = state.roundNumber ?? 0;
 
+            if (typeof window._tickRound === "undefined") window._tickRound = state.roundNumber ?? 0;
+            if ((state.roundNumber ?? 0) !== window._tickRound) {
+                tickedThisRound = false;
+                window._tickRound = (state.roundNumber ?? 0);
+            }
+
+
             if (!timeUpSticky && (nowRound !== window._lastRoundSeen || state.phase === "lobby" || state.phase === "armed")) {
                 if (statusTimeoutId) clearTimeout(statusTimeoutId);
                 showRoomCodeStatus();
@@ -387,6 +398,12 @@
             timeEl.textContent = formatMs(state.remainingMs);
 
             updateTimerWarning(state.remainingMs, state.phase);
+
+            if (!tickedThisRound && state.phase === "armed" && state.remainingMs <= 3000 && state.remainingMs > 2800) {
+                tickedThisRound = true;
+                tickAudio.currentTime = 0;
+                tickAudio.play().catch(() => { });
+            }
 
             runningEl.textContent = state.timerRunning ? "yes" : "no";
             runningEl.className = state.timerRunning ? "ok" : "muted";
