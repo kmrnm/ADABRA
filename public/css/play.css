@@ -239,3 +239,19 @@ body.play #buzz.buzzFlash{
   50%  { transform: translateY(-1px) scale(1.02); box-shadow: 0 0 22px rgba(255,210,90,.25); }
   100% { transform: translateY(0) scale(1);      box-shadow: 0 0 0 rgba(255,210,90,0); }
 }
+
+/* last-3-seconds warning */
+.play .timerBig.timerDanger {
+  border-color: rgba(255, 77, 77, .35);
+  box-shadow: 0 0 22px rgba(255, 77, 77, .18);
+}
+
+.play .timerBig.timerPulse {
+  animation: timerPulse 0.9s ease-in-out infinite;
+}
+
+@keyframes timerPulse {
+  0%   { transform: scale(1); filter: brightness(1); }
+  50%  { transform: scale(1.02); filter: brightness(1.08); }
+  100% { transform: scale(1); filter: brightness(1); }
+}
