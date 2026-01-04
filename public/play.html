@@ -79,6 +79,7 @@
 
   <audio id="beepAudio" src="/sounds/beep.mp3" preload="auto"></audio>
   <audio id="buzzAudio" src="/sounds/buzz.mp3" preload="auto"></audio>
+  <audio id="tickAudio" src="/sounds/tick.mp3" preload="auto"></audio>
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
@@ -114,6 +115,9 @@
 
     const beepAudio = document.getElementById("beepAudio");
     const buzzAudio = document.getElementById("buzzAudio");
+    const tickAudio = document.getElementById("tickAudio");
+    let tickedThisRound = false;
+
 
     let audioUnlocked = false;
 
@@ -161,6 +165,7 @@
 
     // message “locks”: if set, we keep it until explicitly cleared
     let stickyMsg = null; // { text, cls } or null
+    tickedThisRound = false;
 
     let lastRoundNumber = null;
     let timeUpSticky = false;
@@ -203,6 +208,12 @@
       const danger = phase === "armed" && ms <= 3000 && ms > 0;
       timerBox?.classList.toggle("timerDanger", danger);
       timerBox?.classList.toggle("timerPulse", danger);
+    }
+
+    if (!tickedThisRound && state.phase === "armed" && state.remainingMs <= 3000 && state.remainingMs > 2800) {
+      tickedThisRound = true;
+      tickAudio.currentTime = 0;
+      tickAudio.play().catch(() => { });
     }
 
     function formatMs(ms) {
