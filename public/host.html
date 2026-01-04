@@ -250,6 +250,16 @@
                 });
 
                 scoreboardEl.appendChild(card);
+
+                const scoreEl = card.querySelector(`[data-score-team="${t.id}"]`);
+                const prev = prevScores.get(String(t.id));
+                if (typeof prev === "number" && t.score > prev) {
+                    scoreEl.classList.remove("scorePop");
+                    void scoreEl.offsetWidth;
+                    scoreEl.classList.add("scorePop");
+                }
+                prevScores.set(String(t.id), t.score);
+
             }
         }
 
