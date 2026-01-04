@@ -117,7 +117,7 @@
     const buzzAudio = document.getElementById("buzzAudio");
     const tickAudio = document.getElementById("tickAudio");
     let tickedThisRound = false;
-
+    let prevRemainingMs = null;
 
     let audioUnlocked = false;
 
@@ -165,10 +165,10 @@
 
     // message “locks”: if set, we keep it until explicitly cleared
     let stickyMsg = null; // { text, cls } or null
-    tickedThisRound = false;
-
     let lastRoundNumber = null;
     let timeUpSticky = false;
+    tickedThisRound = false;
+    prevRemainingMs = null;
 
     function setMsg(text, cls = "muted", { sticky = false } = {}) {
       msgEl.className = cls;
@@ -208,12 +208,6 @@
       const danger = phase === "armed" && ms <= 3000 && ms > 0;
       timerBox?.classList.toggle("timerDanger", danger);
       timerBox?.classList.toggle("timerPulse", danger);
-    }
-
-    if (!tickedThisRound && state.phase === "armed" && state.remainingMs <= 3000 && state.remainingMs > 2800) {
-      tickedThisRound = true;
-      tickAudio.currentTime = 0;
-      tickAudio.play().catch(() => { });
     }
 
     function formatMs(ms) {
@@ -454,6 +448,28 @@
       timeEl.textContent = formatMs(state.remainingMs);
 
       updateTimerWarning(state.remainingMs, state.phase);
+
+      if (state.phase === "armed") {
+        const ms = Number(state.remainingMs || 0);
+
+        if (prevRemainingMs === null) prevRemainingMs = ms;
+
+        const crossedIntoLast3 =
+          !tickedThisRound &&
+          prevRemainingMs > 3000 &&
+          ms <= 3000 &&
+          ms > 0;
+
+        if (crossedIntoLast3) {
+          tickedThisRound = true;
+          tickAudio.currentTime = 0;
+          tickAudio.play().catch(() => { });
+        }
+
+        prevRemainingMs = ms;
+      } else {
+        prevRemainingMs = null;
+      }
 
       const chosenTeam = myTeamId || (currentRoom ? getSavedTeam(currentRoom) : null);
 
