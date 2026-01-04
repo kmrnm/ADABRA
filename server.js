@@ -409,8 +409,7 @@ io.on("connection", (socket) => {
 
     room.timeUpAt = null;
 
-    //Round changes when host beeps :)
-    room.roundNumber += 1;
+    //room.roundNumber += 1;
 
     // start armed round
     room.phase = "armed";
@@ -487,6 +486,9 @@ io.on("connection", (socket) => {
     if (scoredTeamId) {
       io.to(room.roomCode).emit("correctFx", { teamId: scoredTeamId });
     }
+
+    room.roundNumber += 1;
+    room.timeUpAt = null;
 
     resetToLobby(room);
     emitRoomState(room.roomCode);
