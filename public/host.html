@@ -345,6 +345,7 @@
         });
 
         let statusTimeoutId = null;
+        let timeUpSticky = false;
 
         function setStatusTemp(text, cls, ms = 1200) {
             if (statusTimeoutId) clearTimeout(statusTimeoutId);
@@ -353,7 +354,8 @@
         }
 
         socket.on("timeUp", () => {
-            setStatusTemp("Time is up.", "err", 1500);
+            timeUpSticky = true;
+            setStatus("TIME IS UP!", "err");
         });
 
         socket.on("errorMsg", (text) => setStatus(text, "err"));
@@ -361,17 +363,22 @@
         socket.on("roomState", (state) => {
             if (!currentRoom || state.roomCode !== currentRoom) return;
 
+            timeUpSticky = Boolean(state.timeUpAt);
+            if (timeUpSticky) {
+                if (statusTimeoutId) clearTimeout(statusTimeoutId);
+                setStatus("TIME IS UP!", "err");
+            }
+
             roundEl.textContent = String(state.roundNumber ?? 0);
 
             if (typeof window._lastRoundSeen === "undefined") window._lastRoundSeen = state.roundNumber ?? 0;
             const nowRound = state.roundNumber ?? 0;
 
-            if (nowRound !== window._lastRoundSeen || state.phase === "lobby" || state.phase === "armed") {
+            if (!timeUpSticky && (nowRound !== window._lastRoundSeen || state.phase === "lobby" || state.phase === "armed")) {
                 if (statusTimeoutId) clearTimeout(statusTimeoutId);
                 showRoomCodeStatus();
                 window._lastRoundSeen = nowRound;
             }
-
 
             phaseEl.textContent = state.phase;
             phaseEl.className = state.phase === "armed" ? "ok" : "muted";

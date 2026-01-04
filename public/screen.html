@@ -39,6 +39,10 @@
                 —
             </div>
 
+            <div id="timeUpBanner" class="lockedBanner err" style="display:none;">
+                TIME IS UP!
+            </div>
+
             <div class="screenBody">
                 <div class="screenCol">
                     <div class="muted" style="font-weight:900; letter-spacing:.4px;">Scoreboard</div>
@@ -69,6 +73,7 @@
         const lastBuzzEl = document.getElementById("lastBuzz");
         const lockedBannerEl = document.getElementById("lockedBanner");
         const scoreboardEl = document.getElementById("scoreboard");
+        const timeUpBannerEl = document.getElementById("timeUpBanner");
 
         let currentRoom = null;
 
@@ -127,7 +132,10 @@
             roundEl.textContent = String(state.roundNumber ?? 0);
             timeEl.textContent = formatMs(state.remainingMs || 0);
             updateTimerWarning(timeEl, state.remainingMs || 0, state.phase);
-
+            const isTimeUp = Boolean(state.timeUpAt);
+            timeUpBannerEl.style.display = isTimeUp ? "block" : "none";
+            timeEl.classList.toggle("timerDanger", isTimeUp);
+            timeEl.classList.toggle("timerPulse", isTimeUp);
             renderScoreboard(state.teams);
 
             if (!state.lastBuzz) {
