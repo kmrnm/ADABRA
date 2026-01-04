@@ -165,15 +165,17 @@
 
             }
 
-            if (state.phase !== "locked" || !state.lastBuzz) {
-                lastBuzzEl.textContent = "—";
+            if (state.phase === "locked") {
+                const answeringTeamId = state.lockedByTeamId || (state.lastBuzz && state.lastBuzz.teamId);
+                if (answeringTeamId) {
+                    lockedBannerEl.style.display = "block";
+                    lockedBannerEl.textContent = `${teamNameFromState(state, answeringTeamId)} is answering`;
+                } else {
+                    lockedBannerEl.style.display = "block";
+                    lockedBannerEl.textContent = `LOCKED — Team is answering`;
+                }
             } else {
-                const name = teamNameFromState(state, state.lastBuzz.teamId);
-                const isFirst =
-                    state.firstBuzzTeamId &&
-                    String(state.firstBuzzTeamId) === String(state.lastBuzz.teamId);
-
-                lastBuzzEl.textContent = isFirst ? `${name} buzzed first` : `${name} buzzed`;
+                lockedBannerEl.style.display = "none";
             }
         });
 
