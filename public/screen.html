@@ -97,6 +97,29 @@
         const lockedBannerEl = document.getElementById("lockedBanner");
         const scoreboardEl = document.getElementById("scoreboard");
         const timeUpBannerEl = document.getElementById("timeUpBanner");
+        const showQrBtn = document.getElementById("showQr");
+        const qrOverlayEl = document.getElementById("qrOverlay");
+        const closeQrBtn = document.getElementById("closeQr");
+        const qrBoxEl = document.getElementById("qrBox");
+        const qrTextEl = document.getElementById("qrText");
+
+        let qrInstance = null;
+
+        function buildQrForRoom(roomCode) {
+            if (!roomCode) return;
+
+            const url = `${location.origin}/play?room=${encodeURIComponent(roomCode)}`;
+            qrTextEl.textContent = url;
+
+            qrBoxEl.innerHTML = "";
+            qrInstance = new QRCode(qrBoxEl, {
+                text: url,
+                width: 260,
+                height: 260,
+                correctLevel: QRCode.CorrectLevel.M
+            });
+        }
+
 
         let currentRoom = null;
 
@@ -155,6 +178,21 @@
 
 
         joinRoom(getQueryRoom());
+
+        showQrBtn.onclick = () => {
+            if (!currentRoom) return;
+            buildQrForRoom(currentRoom);
+            qrOverlayEl.style.display = "flex";
+        };
+
+        closeQrBtn.onclick = () => {
+            qrOverlayEl.style.display = "none";
+        };
+
+        qrOverlayEl.addEventListener("click", (e) => {
+            if (e.target === qrOverlayEl) qrOverlayEl.style.display = "none";
+        });
+
 
         socket.on("roomState", (state) => {
             if (!currentRoom || state.roomCode !== currentRoom) return;
