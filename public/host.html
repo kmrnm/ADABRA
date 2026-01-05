@@ -13,8 +13,9 @@
 <body>
     <div class="container">
         <div class="topbar">
-            <div class="brand"><span class="brand-dot"></span>ADABRA</div>
-
+            <a href="/" style="text-decoration: none;">
+                <div class="brand"><span class="brand-dot"></span>ADABRA</div>
+            </a>
             <div style="display:flex; align-items:center; gap:10px;">
                 <div class="muted">Spectator Screen</div>
             </div>
@@ -170,9 +171,9 @@
 
         window.addEventListener("keydown", (e) => {
             if (e.code !== "Space") return;
-            if (e.repeat) return;               
-            if (isTypingIntoField()) return;    
-            if (!currentRoom) return;           
+            if (e.repeat) return;
+            if (isTypingIntoField()) return;
+            if (!currentRoom) return;
 
             e.preventDefault();
 
