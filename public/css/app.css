@@ -619,3 +619,44 @@ input:focus, select:focus {
   70%  { opacity: 1; }
   100% { transform: translateY(520px) rotate(420deg); opacity: 0; }
 }
+
+/* QR Overlay */
+.qrOverlay{
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999999;
+  padding: 18px;
+}
+
+.qrModal{
+  width: min(420px, 100%);
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(20, 24, 40, .72);
+  box-shadow: 0 26px 80px rgba(0,0,0,.55);
+  padding: 14px;
+}
+
+.qrModalTop{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.qrBox{
+  width: 100%;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.06);
+}

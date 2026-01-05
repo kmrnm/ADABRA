@@ -63,7 +63,25 @@
         </footer>
     </div>
     <div id="confettiWrap" class="confettiWrap"></div>
+
+    <!-- QR Overlay -->
+    <div id="qrOverlay" class="qrOverlay" style="display:none;">
+        <div class="qrModal">
+            <div class="qrModalTop">
+                <div class="muted" style="font-weight:800;">Scan to join this room</div>
+                <button id="closeQr" class="btn btn-ghost" style="padding:8px 10px;">Close</button>
+            </div>
+
+            <div id="qrBox" class="qrBox"></div>
+
+            <div class="muted" style="margin-top:10px; text-align:center;">
+                <span id="qrText">—</span>
+            </div>
+        </div>
+    </div>
+
     <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <script>
         const socket = io();
 
