@@ -326,6 +326,18 @@
         incorrectBtn.onclick = () => socket.emit("hostIncorrect");
         correctBtn.onclick = () => socket.emit("hostCorrect");
 
+        window.addEventListener("keydown", (e) => {
+            if (e.code !== "Space") return;
+
+            const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : "";
+            const isTyping = tag === "input" || tag === "textarea" || tag === "select";
+
+            if (isTyping) return;
+
+            e.preventDefault();
+            beepStartBtn.click(); // triggers hostBeepStart
+        });
+
         applyTeamsBtn.onclick = () => socket.emit("hostSetTeamCount", { count: Number(teamCountSel.value) });
         setDurationBtn.onclick = () => socket.emit("hostSetDuration", { seconds: Number(durationInput.value) });
 
