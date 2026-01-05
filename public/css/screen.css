@@ -223,6 +223,15 @@ body.screen .screenBody {
   body.screen .screenBody {
     grid-template-columns: 1fr;
   }
+  .roomBlock div:nth-child(2){
+    justify-content: center;
+  }
+  .screenTime{
+    text-align: center !important;
+  }
+  .screenCol div:first-child{
+    text-align: center;
+  }
 }
 
 .confettiWrap {
