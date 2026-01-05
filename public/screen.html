@@ -20,7 +20,11 @@
             <div class="screenHeader">
                 <div class="roomBlock">
                     <div class="muted">Room</div>
-                    <div id="roomCode" class="screenRoom">—</div>
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <div id="roomCode" class="screenRoom">—</div>
+                        <img id="roomQr" alt="QR"
+                            style="width:100px; height:100px; border-radius:10px; background:#fff; padding:4px; display:none;" />
+                    </div>
                 </div>
 
                 <div class="phaseBlock">
@@ -64,24 +68,7 @@
     </div>
     <div id="confettiWrap" class="confettiWrap"></div>
 
-    <!-- QR Overlay -->
-    <div id="qrOverlay" class="qrOverlay" style="display:none;">
-        <div class="qrModal">
-            <div class="qrModalTop">
-                <div class="muted" style="font-weight:800;">Scan to join this room</div>
-                <button id="closeQr" class="btn btn-ghost" style="padding:8px 10px;">Close</button>
-            </div>
-
-            <div id="qrBox" class="qrBox"></div>
-
-            <div class="muted" style="margin-top:10px; text-align:center;">
-                <span id="qrText">—</span>
-            </div>
-        </div>
-    </div>
-
     <script src="/socket.io/socket.io.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <script>
         const socket = io();
 
@@ -97,29 +84,7 @@
         const lockedBannerEl = document.getElementById("lockedBanner");
         const scoreboardEl = document.getElementById("scoreboard");
         const timeUpBannerEl = document.getElementById("timeUpBanner");
-        const showQrBtn = document.getElementById("showQr");
-        const qrOverlayEl = document.getElementById("qrOverlay");
-        const closeQrBtn = document.getElementById("closeQr");
-        const qrBoxEl = document.getElementById("qrBox");
-        const qrTextEl = document.getElementById("qrText");
-
-        let qrInstance = null;
-
-        function buildQrForRoom(roomCode) {
-            if (!roomCode) return;
-
-            const url = `${location.origin}/play?room=${encodeURIComponent(roomCode)}`;
-            qrTextEl.textContent = url;
-
-            qrBoxEl.innerHTML = "";
-            qrInstance = new QRCode(qrBoxEl, {
-                text: url,
-                width: 260,
-                height: 260,
-                correctLevel: QRCode.CorrectLevel.M
-            });
-        }
-
+        const roomQrEl = document.getElementById("roomQr");
 
         let currentRoom = null;
 
@@ -171,28 +136,25 @@
         function joinRoom(roomCode) {
             currentRoom = roomCode;
             roomCodeEl.textContent = roomCode || "—";
-            if (!roomCode) return;
+
+            if (!roomCode) {
+                if (roomQrEl) roomQrEl.style.display = "none";
+                return;
+            }
+
+            const joinUrl = `${location.origin}/play?room=${encodeURIComponent(roomCode)}`;
+            const qrImgUrl =
+                `https://quickchart.io/qr?size=120&margin=1&text=${encodeURIComponent(joinUrl)}`;
+
+            if (roomQrEl) {
+                roomQrEl.src = qrImgUrl;
+                roomQrEl.style.display = "block";
+            }
 
             socket.emit("joinRoom", { roomCode });
         }
 
-
         joinRoom(getQueryRoom());
-
-        showQrBtn.onclick = () => {
-            if (!currentRoom) return;
-            buildQrForRoom(currentRoom);
-            qrOverlayEl.style.display = "flex";
-        };
-
-        closeQrBtn.onclick = () => {
-            qrOverlayEl.style.display = "none";
-        };
-
-        qrOverlayEl.addEventListener("click", (e) => {
-            if (e.target === qrOverlayEl) qrOverlayEl.style.display = "none";
-        });
-
 
         socket.on("roomState", (state) => {
             if (!currentRoom || state.roomCode !== currentRoom) return;
@@ -234,7 +196,6 @@
                 lockedBannerEl.style.display = "none";
             }
         });
-
 
         const TEAM_COLORS = ["#7c5cff", "#31d3ff", "#19d17f", "#ffd400", "#ff5a00", "#ff3d88"];
         function teamColor(teamId) {

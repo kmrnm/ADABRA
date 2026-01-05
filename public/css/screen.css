@@ -35,6 +35,10 @@ body.screen {
     color: var(--muted);
 }
 
+.phaseBlock{
+  text-align: center;
+}
+
 .screenTime {
     
     font-variant-numeric: tabular-nums;
