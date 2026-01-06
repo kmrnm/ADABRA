@@ -32,20 +32,14 @@
                     <div id="round" class="screenPhase">0</div>
                 </div>
 
-
                 <div class="timerBlock">
                     <div class="muted">Time</div>
-                    <div id="time" class="screenTime" style="text-align: left;">00:00.0</div>
+                    <div id="time" class="screenTime" style="text-align:left;">00:00.0</div>
                 </div>
             </div>
 
-            <div id="lockedBanner" class="lockedBanner" style="display:none;">
-                —
-            </div>
-
-            <div id="timeUpBanner" class="lockedBanner err" style="display:none;">
-                TIME IS UP!
-            </div>
+            <div id="lockedBanner" class="lockedBanner" style="display:none;">—</div>
+            <div id="timeUpBanner" class="lockedBanner err" style="display:none;">TIME IS UP!</div>
 
             <div class="screenBody">
                 <div class="screenCol">
@@ -62,11 +56,15 @@
                 </div>
             </div>
         </div>
+
         <footer class="app-footer">
             Made with JS and <span class="heart">❤</span> by kamrandroid
         </footer>
     </div>
+
     <div id="confettiWrap" class="confettiWrap"></div>
+
+    <!-- ✅ Winner overlay MUST be before script so query works -->
     <div id="winnerOverlay" class="winnerOverlay" style="display:none;">
         <div id="winnerText" class="winnerText">TEAM WON</div>
     </div>
@@ -93,6 +91,7 @@
             border-radius: 18px;
             background: rgba(255, 255, 255, .06);
             border: 1px solid rgba(255, 255, 255, .14);
+            text-align: center;
         }
     </style>
 
@@ -104,7 +103,6 @@
             console.warn("Screen errorMsg:", text);
         });
 
-
         const roomCodeEl = document.getElementById("roomCode");
         const roundEl = document.getElementById("round");
         const timeEl = document.getElementById("time");
@@ -113,6 +111,7 @@
         const scoreboardEl = document.getElementById("scoreboard");
         const timeUpBannerEl = document.getElementById("timeUpBanner");
         const roomQrEl = document.getElementById("roomQr");
+
         const winnerOverlayEl = document.getElementById("winnerOverlay");
         const winnerTextEl = document.getElementById("winnerText");
 
@@ -128,11 +127,9 @@
         function updateTimerWarning(el, ms, phase, isTimeUp) {
             const last3 = (phase === "armed" && ms <= 3000 && ms > 0);
             const danger = Boolean(isTimeUp) || last3;
-
             el.classList.toggle("timerDanger", danger);
             el.classList.toggle("timerPulse", danger);
         }
-
 
         function getQueryRoom() {
             const params = new URLSearchParams(location.search);
@@ -147,18 +144,17 @@
 
         function renderScoreboard(teams) {
             scoreboardEl.innerHTML = "";
-            // sort by score desc
             const sorted = [...(teams || [])].sort((a, b) => (b.score || 0) - (a.score || 0));
             for (const t of sorted) {
                 const row = document.createElement("div");
                 row.className = "screenTeamRow";
                 row.innerHTML = `
-                <div class="screenTeamName">
-                    <span class="teamAvatar" style="margin-left:5px; background:${teamColor(t.id)}"></span>
-                    <span style="margin-left:10px;">${t.name}</span>
-                </div>
-                <div class="screenTeamScore">${t.score}</div>
-                `;
+          <div class="screenTeamName">
+            <span class="teamAvatar" style="margin-left:5px; background:${teamColor(t.id)}"></span>
+            <span style="margin-left:10px;">${t.name}</span>
+          </div>
+          <div class="screenTeamScore">${t.score}</div>
+        `;
                 scoreboardEl.appendChild(row);
             }
         }
@@ -173,13 +169,10 @@
             }
 
             const joinUrl = `${location.origin}/play?room=${encodeURIComponent(roomCode)}`;
-            const qrImgUrl =
-                `https://quickchart.io/qr?size=120&margin=1&text=${encodeURIComponent(joinUrl)}`;
+            const qrImgUrl = `https://quickchart.io/qr?size=120&margin=1&text=${encodeURIComponent(joinUrl)}`;
 
-            if (roomQrEl) {
-                roomQrEl.src = qrImgUrl;
-                roomQrEl.style.display = "block";
-            }
+            roomQrEl.src = qrImgUrl;
+            roomQrEl.style.display = "block";
 
             socket.emit("joinRoom", { roomCode });
         }
@@ -189,12 +182,12 @@
         socket.on("roomState", (state) => {
             if (!currentRoom || state.roomCode !== currentRoom) return;
 
-            // Winner overlay
+            // winner overlay
             if (state.gameOver) {
-                if (winnerTextEl) winnerTextEl.textContent = state.winnerText || "GAME OVER";
-                if (winnerOverlayEl) winnerOverlayEl.style.display = "flex";
+                winnerTextEl.textContent = state.winnerText || "GAME OVER";
+                winnerOverlayEl.style.display = "flex";
             } else {
-                if (winnerOverlayEl) winnerOverlayEl.style.display = "none";
+                winnerOverlayEl.style.display = "none";
             }
 
             roundEl.textContent = String(state.roundNumber ?? 0);
@@ -202,9 +195,7 @@
 
             const isTimeUp = Boolean(state.timeUpAt);
             updateTimerWarning(timeEl, state.remainingMs || 0, state.phase, isTimeUp);
-            if (typeof timeUpBannerEl !== "undefined" && timeUpBannerEl) {
-                timeUpBannerEl.style.display = isTimeUp ? "block" : "none";
-            }
+            timeUpBannerEl.style.display = isTimeUp ? "block" : "none";
 
             renderScoreboard(state.teams);
 
@@ -218,18 +209,14 @@
                     String(state.firstBuzzTeamId) === String(state.lastBuzz.teamId);
 
                 lastBuzzEl.textContent = isFirst ? `${name} buzzed first` : `${name} buzzed`;
-
             }
 
             if (state.phase === "locked") {
                 const answeringTeamId = state.lockedByTeamId || (state.lastBuzz && state.lastBuzz.teamId);
-                if (answeringTeamId) {
-                    lockedBannerEl.style.display = "block";
-                    lockedBannerEl.textContent = `${teamNameFromState(state, answeringTeamId)} is answering`;
-                } else {
-                    lockedBannerEl.style.display = "block";
-                    lockedBannerEl.textContent = `LOCKED — Team is answering`;
-                }
+                lockedBannerEl.style.display = "block";
+                lockedBannerEl.textContent = answeringTeamId
+                    ? `${teamNameFromState(state, answeringTeamId)} is answering`
+                    : "LOCKED — Team is answering";
             } else {
                 lockedBannerEl.style.display = "none";
             }
@@ -263,7 +250,6 @@
         socket.on("correctFx", ({ teamId }) => {
             burstConfetti(teamColor(teamId));
         });
-
     </script>
 </body>
 
