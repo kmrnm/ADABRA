@@ -179,6 +179,8 @@
             if (isTypingIntoField()) return;
             if (!currentRoom) return;
 
+            if (lastHostState?.gameOver) return;
+
             e.preventDefault();
 
             const running = Boolean(lastHostState?.timerRunning);
@@ -191,14 +193,6 @@
             }
         });
 
-
-        function isTypingIntoField() {
-            const el = document.activeElement;
-            if (!el) return false;
-            const tag = (el.tagName || "").toLowerCase();
-            return tag === "input" || tag === "textarea" || tag === "select" || el.isContentEditable;
-        }
-
         const TEAM_COLORS = ["#7c5cff", "#31d3ff", "#19d17f", "#ffd400", "#ff5a00", "#ff3d88"];
         function teamColor(teamId) {
             const n = Number(teamId);
@@ -207,7 +201,6 @@
         }
 
         const prevScores = new Map(); // teamId -> last score
-
 
         function setStatus(text, cls = "muted") {
             statusEl.className = cls;
@@ -322,6 +315,8 @@
                 const data = await res.json();
 
                 currentRoom = data.roomCode;
+                setHostControlsLocked(false);
+
                 openScreenBtn.disabled = false;
                 endRoundBtn.disabled = false;
 
@@ -363,14 +358,22 @@
             );
         };
 
-        nextRoundBtn.onclick = () => socket.emit("hostNextRound");
-        beepStartBtn.onclick = () => socket.emit("hostBeepStart");
-        pauseTimerBtn.onclick = () => socket.emit("hostPauseTimer");
-        incorrectBtn.onclick = () => socket.emit("hostIncorrect");
-        correctBtn.onclick = () => socket.emit("hostCorrect");
-        endRoundBtn.onclick = () => socket.emit("hostEndRound");
-        applyTeamsBtn.onclick = () => socket.emit("hostSetTeamCount", { count: Number(teamCountSel.value) });
-        setDurationBtn.onclick = () => socket.emit("hostSetDuration", { seconds: Number(durationInput.value) });
+        function hostGuard() {
+            if (!currentRoom) return false;
+            if (lastHostState?.gameOver) return false;
+            return true;
+        }
+
+        nextRoundBtn.onclick = () => { if (hostGuard()) socket.emit("hostNextRound"); };
+        beepStartBtn.onclick = () => { if (hostGuard()) socket.emit("hostBeepStart"); };
+        pauseTimerBtn.onclick = () => { if (hostGuard()) socket.emit("hostPauseTimer"); };
+        incorrectBtn.onclick = () => { if (hostGuard()) socket.emit("hostIncorrect"); };
+        correctBtn.onclick = () => { if (hostGuard()) socket.emit("hostCorrect"); };
+
+        applyTeamsBtn.onclick = () => { if (hostGuard()) socket.emit("hostSetTeamCount", { count: Number(teamCountSel.value) }); };
+        setDurationBtn.onclick = () => { if (hostGuard()) socket.emit("hostSetDuration", { seconds: Number(durationInput.value) }); };
+
+        endRoundBtn.onclick = () => { if (hostGuard()) socket.emit("hostEndRound"); };
 
         socket.on("beep", () => {
             beepAudio.currentTime = 0;
@@ -407,6 +410,21 @@
 
         socket.on("errorMsg", (text) => setStatus(text, "err"));
 
+        function setHostControlsLocked(locked) {
+            nextRoundBtn.disabled = locked;
+            beepStartBtn.disabled = locked;
+            pauseTimerBtn.disabled = locked;
+            correctBtn.disabled = locked;
+            incorrectBtn.disabled = locked;
+
+            applyTeamsBtn.disabled = locked;
+            setDurationBtn.disabled = locked;
+
+            endRoundBtn.disabled = locked || !currentRoom;
+
+            document.body.classList.toggle("hostLocked", locked);
+        }
+
         socket.on("roomState", (state) => {
             if (!currentRoom || state.roomCode !== currentRoom) return;
             lastHostState = state;
@@ -415,6 +433,9 @@
                 if (statusTimeoutId) clearTimeout(statusTimeoutId);
                 setStatus("TIME IS UP!", "err");
             }
+
+            const isGameOver = Boolean(state.gameOver);
+            setHostControlsLocked(isGameOver);
 
             roundEl.textContent = String(state.roundNumber ?? 0);
 
@@ -426,7 +447,6 @@
                 tickedThisRound = false;
                 window._tickRound = (state.roundNumber ?? 0);
             }
-
 
             if (!timeUpSticky && (nowRound !== window._lastRoundSeen || state.phase === "lobby" || state.phase === "armed")) {
                 if (statusTimeoutId) clearTimeout(statusTimeoutId);

@@ -357,6 +357,7 @@ io.on("connection", (socket) => {
     touchRoom(room);
 
     if (!isHost(socket, room)) return socket.emit("errorMsg", "Host only.");
+    if (room.gameOver) return socket.emit("errorMsg", "Game is over. Create a new room.");
 
     const desired = Number(count);
     if (!Number.isInteger(desired) || desired < 2 || desired > room.maxTeams) {
@@ -383,6 +384,7 @@ io.on("connection", (socket) => {
     touchRoom(room);
 
     if (!isHost(socket, room)) return socket.emit("errorMsg", "Host only.");
+    if (room.gameOver) return socket.emit("errorMsg", "Game is over. Create a new room.");
 
     const s = Number(seconds);
     if (!Number.isFinite(s) || s <= 0 || s > 600) {
@@ -403,6 +405,7 @@ io.on("connection", (socket) => {
     touchRoom(room);
 
     if (!isHost(socket, room)) return socket.emit("errorMsg", "Host only.");
+    if (room.gameOver) return socket.emit("errorMsg", "Game is over. Create a new room.");
 
     room.roundNumber += 1;
     room.timeUpAt = null;
@@ -418,6 +421,7 @@ io.on("connection", (socket) => {
     touchRoom(room);
 
     if (!isHost(socket, room)) return socket.emit("errorMsg", "Host only.");
+    if (room.gameOver) return socket.emit("errorMsg", "Game is over. Create a new room.");
 
     room.timeUpAt = null;
 
@@ -447,6 +451,7 @@ io.on("connection", (socket) => {
     touchRoom(room);
 
     if (!isHost(socket, room)) return socket.emit("errorMsg", "Host only.");
+    if (room.gameOver) return socket.emit("errorMsg", "Game is over. Create a new room.");
     room.timerRunning = false;
     room.timerLastTickAt = null;
     room.remainingMs = room.durationMs;
@@ -469,6 +474,7 @@ io.on("connection", (socket) => {
     touchRoom(room);
 
     if (!isHost(socket, room)) return socket.emit("errorMsg", "Host only.");
+    if (room.gameOver) return socket.emit("errorMsg", "Game is over. Create a new room.");
     if (room.phase !== "locked") return;
 
     if (room.lockedByTeamId) room.lockedOutTeams.add(room.lockedByTeamId);
@@ -496,6 +502,7 @@ io.on("connection", (socket) => {
     touchRoom(room);
 
     if (!isHost(socket, room)) return socket.emit("errorMsg", "Host only.");
+    if (room.gameOver) return socket.emit("errorMsg", "Game is over. Create a new room.");
     if (room.phase !== "locked") return;
 
     let scoredTeamId = null;
@@ -524,6 +531,7 @@ io.on("connection", (socket) => {
     touchRoom(room);
 
     if (!isHost(socket, room)) return socket.emit("errorMsg", "Host only.");
+    if (room.gameOver) return socket.emit("errorMsg", "Game is over. Create a new room.");
 
     const t = String(teamId || "").trim();
     const d = Number(delta);
@@ -543,6 +551,7 @@ io.on("connection", (socket) => {
     touchRoom(room);
 
     if (!isHost(socket, room)) return socket.emit("errorMsg", "Host only.");
+    if (room.gameOver) return socket.emit("errorMsg", "Game is over. Create a new room.");
 
     // Stop gameplay
     room.timerRunning = false;
