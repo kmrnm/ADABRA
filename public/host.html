@@ -28,6 +28,7 @@
 
                     <div class="row">
                         <button id="create" class="btn">Create New Room</button>
+                        <button id="endRound" class="btn btn-danger">End Round</button>
                         <span id="status" class="muted">Ready.</span>
                     </div>
 
@@ -150,6 +151,8 @@
         const beepAudio = document.getElementById("beepAudio");
         const buzzAudio = document.getElementById("buzzAudio");
 
+        const endRoundBtn = document.getElementById("endRound");
+
         const tickAudio = document.getElementById("tickAudio");
         let tickedThisRound = false;
 
@@ -157,6 +160,7 @@
 
         let currentRoom = null;
         openScreenBtn.disabled = true;
+        endRoundBtn.disabled = true;
 
         let hostKey = null;
 
@@ -319,6 +323,7 @@
 
                 currentRoom = data.roomCode;
                 openScreenBtn.disabled = false;
+                endRoundBtn.disabled = false;
 
                 hostKey = data.hostKey;
 
@@ -363,6 +368,7 @@
         pauseTimerBtn.onclick = () => socket.emit("hostPauseTimer");
         incorrectBtn.onclick = () => socket.emit("hostIncorrect");
         correctBtn.onclick = () => socket.emit("hostCorrect");
+        endRoundBtn.onclick = () => socket.emit("hostEndRound");
         applyTeamsBtn.onclick = () => socket.emit("hostSetTeamCount", { count: Number(teamCountSel.value) });
         setDurationBtn.onclick = () => socket.emit("hostSetDuration", { seconds: Number(durationInput.value) });
 
