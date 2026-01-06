@@ -567,7 +567,7 @@ io.on("connection", (socket) => {
 
     if (winners.length === 1) {
       room.winnerTeamId = String(winners[0].id);
-      room.winnerText = `${winners[0].name} WON`;
+      room.winnerText = `🥇${winners[0].name} WON !🥇`;
     } else {
       room.winnerTeamId = null;
       room.winnerText = `TIE (${winners.map(w => w.name).join(" & ")})`;
