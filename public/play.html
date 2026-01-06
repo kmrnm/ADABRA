@@ -337,13 +337,25 @@
       joinRoom(roomInput.value);
     };
 
-    // spacebar triggers buzz
-    // (prevents page scroll, and triggers buzz if allowed)
+    function isTypingIntoField() {
+      const el = document.activeElement;
+      if (!el) return false;
+      const tag = (el.tagName || "").toLowerCase();
+      return tag === "input" || tag === "textarea" || tag === "select" || el.isContentEditable;
+    }
+
     window.addEventListener("keydown", (e) => {
-      if (e.code === "Space") {
-        e.preventDefault();
-        if (!buzzBtn.disabled) buzzBtn.click();
-      }
+      if (e.code !== "Space") return;
+      if (e.repeat) return;
+      if (isTypingIntoField()) return;
+
+      const chosenTeam = myTeamId || (currentRoom ? getSavedTeam(currentRoom) : null);
+      if (!chosenTeam) return;
+      if (!lastState || lastState.phase !== "armed") return;
+      if (buzzBtn.disabled) return;
+
+      e.preventDefault();
+      buzzBtn.click();
     });
 
     // play local buzz sound when user clicks buzz
@@ -391,17 +403,12 @@
       myTeamId = String(teamId);
       if (currentRoom) saveTeam(currentRoom, myTeamId);
 
-      teamEl.textContent = `${teamLabel(myTeamId)}`;
+      teamEl.textContent = teamLabel(myTeamId);
       teamEl.className = "ok";
 
       document.getElementById("tablePicker").style.display = "none";
 
       setMsg("Team selected.", "ok");
-
-      teamsEl.style.display = "none";
-
-      // render with correct signature
-      if (lastState) renderTeamButtons(lastState.teams, myTeamId, lastState.takenTeams, playerId);
 
       updateMyScore();
       updateBuzzAvailability();
