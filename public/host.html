@@ -208,6 +208,14 @@
         }
 
         function showRoomCodeStatus() {
+            if (lastHostState?.gameOver) {
+                const text = lastHostState?.winnerText
+                    ? `ROUND ENDED. ${lastHostState.winnerText}`
+                    : "ROUND ENDED";
+                setStatus(text, "err");
+                return;
+            }
+
             if (currentRoom) {
                 setStatus(`Room: ${currentRoom}`, "ok");
             } else {
@@ -436,6 +444,23 @@
 
             const isGameOver = Boolean(state.gameOver);
             setHostControlsLocked(isGameOver);
+
+            if (isGameOver) {
+                if (statusTimeoutId) clearTimeout(statusTimeoutId);
+                showRoomCodeStatus();
+            }
+
+            // const roomWrap = document.getElementById("roomCodeWrap");
+            // if (roomWrap) roomWrap.style.display = "block";
+
+            if (isGameOver) {
+                roomCodeEl.textContent = "ROUND ENDED";
+                roomCodeEl.className = "code err";
+            } else {
+                roomCodeEl.textContent = currentRoom || "—";
+                roomCodeEl.className = currentRoom ? "code ok" : "code muted";
+            }
+
 
             roundEl.textContent = String(state.roundNumber ?? 0);
 
