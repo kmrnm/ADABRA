@@ -77,6 +77,10 @@ function createRoom() {
     lastBuzz: null, // { by, teamId } or null
     lockedByPlayerId: null,
 
+    gameOver: false,
+    winnerTeamId: null,
+    winnerText: null,
+
     // teams
     maxTeams: 6,
     teams: makeTeams(2),
@@ -118,6 +122,10 @@ function publicRoomState(room) {
     teamNameLocked: Array.from(room.teamNameLocked),
 
     firstBuzzTeamId: room.firstBuzzTeamId,
+
+    gameOver: room.gameOver,
+    winnerTeamId: room.winnerTeamId,
+    winnerText: room.winnerText,
   };
 }
 
@@ -160,6 +168,10 @@ function resetToLobby(room) {
 
   room.firstBuzzTeamId = null;
   room.lockedByPlayerId = null;
+
+  room.gameOver = false;
+  room.winnerTeamId = null;
+  room.winnerText = null;
 }
 
 // Timer loop
@@ -521,6 +533,46 @@ io.on("connection", (socket) => {
     }
 
     room.teams[t].score += d;
+    emitRoomState(room.roomCode);
+  });
+
+  socket.on("hostEndRound", () => {
+    const room = requireRoom(socket);
+    if (!room) return;
+
+    touchRoom(room);
+
+    if (!isHost(socket, room)) return socket.emit("errorMsg", "Host only.");
+
+    // Stop gameplay
+    room.timerRunning = false;
+    room.timerLastTickAt = null;
+    room.phase = "lobby";
+    room.timeUpAt = null;
+
+    // Compute winner
+    const teams = Object.values(room.teams || {});
+    if (!teams.length) {
+      room.gameOver = true;
+      room.winnerTeamId = null;
+      room.winnerText = "NO TEAMS";
+      emitRoomState(room.roomCode);
+      return;
+    }
+
+    const maxScore = Math.max(...teams.map(t => Number(t.score || 0)));
+    const winners = teams.filter(t => Number(t.score || 0) === maxScore);
+
+    room.gameOver = true;
+
+    if (winners.length === 1) {
+      room.winnerTeamId = String(winners[0].id);
+      room.winnerText = `${winners[0].name} WON`;
+    } else {
+      room.winnerTeamId = null;
+      room.winnerText = `TIE (${winners.map(w => w.name).join(" & ")})`;
+    }
+
     emitRoomState(room.roomCode);
   });
 
