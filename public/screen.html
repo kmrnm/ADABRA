@@ -67,6 +67,34 @@
         </footer>
     </div>
     <div id="confettiWrap" class="confettiWrap"></div>
+    <div id="winnerOverlay" class="winnerOverlay" style="display:none;">
+        <div id="winnerText" class="winnerText">TEAM WON</div>
+    </div>
+
+    <style>
+        .winnerOverlay {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, .55);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            z-index: 9999;
+        }
+
+        .winnerText {
+            font-weight: 900;
+            letter-spacing: .6px;
+            text-transform: uppercase;
+            font-size: clamp(32px, 6vw, 72px);
+            padding: 18px 28px;
+            border-radius: 18px;
+            background: rgba(255, 255, 255, .06);
+            border: 1px solid rgba(255, 255, 255, .14);
+        }
+    </style>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
@@ -85,6 +113,8 @@
         const scoreboardEl = document.getElementById("scoreboard");
         const timeUpBannerEl = document.getElementById("timeUpBanner");
         const roomQrEl = document.getElementById("roomQr");
+        const winnerOverlayEl = document.getElementById("winnerOverlay");
+        const winnerTextEl = document.getElementById("winnerText");
 
         let currentRoom = null;
 
@@ -158,6 +188,14 @@
 
         socket.on("roomState", (state) => {
             if (!currentRoom || state.roomCode !== currentRoom) return;
+
+            // Winner overlay
+            if (state.gameOver) {
+                if (winnerTextEl) winnerTextEl.textContent = state.winnerText || "GAME OVER";
+                if (winnerOverlayEl) winnerOverlayEl.style.display = "flex";
+            } else {
+                if (winnerOverlayEl) winnerOverlayEl.style.display = "none";
+            }
 
             roundEl.textContent = String(state.roundNumber ?? 0);
             timeEl.textContent = formatMs(state.remainingMs || 0);
