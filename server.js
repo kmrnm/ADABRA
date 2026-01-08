@@ -90,6 +90,8 @@ function createRoom() {
 
     // persistent player identity for team choice (refresh-safe)
     playerTeams: new Map(), // playerId -> teamId
+
+    focusLockedTeams: new Set(),
   });
 
   return { roomCode, hostKey };
@@ -126,6 +128,8 @@ function publicRoomState(room) {
     gameOver: room.gameOver,
     winnerTeamId: room.winnerTeamId,
     winnerText: room.winnerText,
+
+    focusLockedTeams: Array.from(room.focusLockedTeams),
   };
 }
 
@@ -172,6 +176,8 @@ function resetToLobby(room) {
   room.gameOver = false;
   room.winnerTeamId = null;
   room.winnerText = null;
+
+  room.focusLockedTeams.clear();
 }
 
 // Timer loop
@@ -609,6 +615,10 @@ io.on("connection", (socket) => {
       return socket.emit("buzzRejected", { reason: "TEAM_LOCKED_OUT" });
     }
 
+    if (room.focusLockedTeams.has(String(teamId))) {
+      return socket.emit("buzzRejected", { reason: "FOCUS_LOCKED" });
+    }
+
     room.phase = "locked";
 
     // IMPORTANT: lock by PLAYER + TEAM, not socket
@@ -666,6 +676,25 @@ io.on("connection", (socket) => {
     room.membersCount += 1;
     socket.emit("roomState", publicRoomState(room));
   });
+
+  socket.on("playerFocus", ({ focused } = {}) => {
+    const room = requireRoom(socket);
+    if (!room) return;
+
+    if (socket.data.isHost) return;
+
+    const teamId = socket.data.teamId;
+    const playerId = socket.data.playerId;
+    if (!teamId || !playerId) return;
+
+    if (room.phase !== "armed" && room.phase !== "locked") return;
+    if (focused === false) {
+      room.focusLockedTeams.add(String(teamId));
+      io.to(room.roomCode).emit("errorMsg", `Team ${teamId} focus lost → locked out this round.`);
+      emitRoomState(room.roomCode);
+    }
+  });
+
 
 
 });

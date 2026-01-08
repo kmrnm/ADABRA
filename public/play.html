@@ -329,6 +329,15 @@
 
       // not locked out
       buzzBtn.disabled = (lastState.phase !== "armed");
+
+      const focusLocked = new Set(lastState.focusLockedTeams || []);
+      const isFocusLocked = focusLocked.has(chosenTeam);
+      if (isFocusLocked) {
+        buzzBtn.disabled = true;
+        setMsg("Focus lost. Locked out this round.", "err", { sticky: true });
+        return;
+      }
+
     }
 
     function joinRoom(code) {
@@ -598,12 +607,28 @@
       hardDisableBuzzNow(); // stop spam instantly
     });
 
+    function sendFocus(focused) {
+      if (!currentRoom) return;
+      socket.emit("playerFocus", { focused });
+    }
+
+    document.addEventListener("visibilitychange", () => {
+      sendFocus(!document.hidden);
+    });
+
+    window.addEventListener("blur", () => sendFocus(false));
+    window.addEventListener("focus", () => sendFocus(true));
+
+
 
     socket.on("buzzRejected", ({ reason }) => {
       if (reason === "NO_TEAM") setMsg("Choose your team first.", "err");
       else if (reason === "NOT_ARMED") setMsg("Too early. Wait for the beep.", "err");
       else if (reason === "TIME_UP") setMsg("Too late. Time is up.", "err");
       else if (reason === "TEAM_LOCKED_OUT") setMsg("Your team is locked out this round.", "err", { sticky: true });
+      else if (reason === "FOCUS_LOCKED") {
+        setMsg("Focus lost (tab/app switched). You are locked out this round.", "err", { sticky: true });
+      }
     });
 
     socket.on("errorMsg", (text) => setMsg(text, "err"));
