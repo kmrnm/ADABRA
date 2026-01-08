@@ -28,6 +28,12 @@
                     <div class="row">
                         <button id="create" class="btn">Create New Room</button>
                         <button id="endRound" class="btn btn-danger">End Round</button>
+
+                        <label class="pill" style="gap:10px;">
+                            FairPlay
+                            <input id="fairPlayToggle" type="checkbox" style="transform:scale(1.2);" />
+                        </label>
+
                         <span id="status" class="muted">Ready.</span>
                     </div>
 
@@ -151,6 +157,7 @@
         const buzzAudio = document.getElementById("buzzAudio");
 
         const endRoundBtn = document.getElementById("endRound");
+        const fairPlayToggle = document.getElementById("fairPlayToggle");
 
         const tickAudio = document.getElementById("tickAudio");
         let tickedThisRound = false;
@@ -160,6 +167,7 @@
         let currentRoom = null;
         openScreenBtn.disabled = true;
         endRoundBtn.disabled = true;
+        fairPlayToggle.disabled = true;
 
         let hostKey = null;
 
@@ -250,8 +258,9 @@
             return t ? t.name : `Team ${teamId}`;
         }
 
-        function renderScoreboard(teams, lockedOutTeams, takenTeams) {
+        function renderScoreboard(teams, lockedOutTeams, takenTeams, focusLockedTeams) {
             const locked = new Set(lockedOutTeams || []);
+            const focusLocked = new Set(focusLockedTeams || []);
             const takenMap = new Map((takenTeams || []).map(x => [String(x.teamId), x.playerId]));
 
             scoreboardEl.innerHTML = "";
@@ -278,6 +287,16 @@
                         <div class="lockout ${locked.has(t.id) ? "err" : "muted"}">
                             ${locked.has(t.id) ? "LOCKED OUT this round" : ""}
                         </div>
+
+                        <div class="lockout ${focusLocked.has(String(t.id)) ? "err" : "muted"}" style="margin-top:6px;">
+                            ${focusLocked.has(String(t.id)) ? "FOCUS LOST" : ""}
+                        </div>
+
+                        ${focusLocked.has(String(t.id)) ? `
+                        <div style="margin-top:10px;">
+                            <button class="btn btn-warn" data-unfocus="${t.id}">UNBLOCK FOCUS</button>
+                        </div>
+                        ` : ``}
                         </div>
 
                         <div class="teamRight">
@@ -292,7 +311,8 @@
                     </div>
                     `;
 
-                card.querySelectorAll("button").forEach(btn => {
+                // Score buttons
+                card.querySelectorAll(".scoreBtns button").forEach(btn => {
                     btn.onclick = () => {
                         socket.emit("hostAdjustScore", {
                             teamId: btn.dataset.team,
@@ -300,6 +320,13 @@
                         });
                     };
                 });
+
+                const unfocusBtn = card.querySelector('[data-unfocus]');
+                if (unfocusBtn) {
+                    unfocusBtn.onclick = () => {
+                        socket.emit("hostUnblockFocus", { teamId: unfocusBtn.dataset.unfocus });
+                    };
+                }
 
                 scoreboardEl.appendChild(card);
 
@@ -326,6 +353,7 @@
 
                 openScreenBtn.disabled = false;
                 endRoundBtn.disabled = false;
+                fairPlayToggle.disabled = false;
 
                 hostKey = data.hostKey;
 
@@ -381,6 +409,10 @@
         setDurationBtn.onclick = () => { if (hostGuard()) socket.emit("hostSetDuration", { seconds: Number(durationInput.value) }); };
 
         endRoundBtn.onclick = () => { if (hostGuard()) socket.emit("hostEndRound"); };
+
+        fairPlayToggle.onchange = () => {
+            socket.emit("hostSetFairPlay", { enabled: fairPlayToggle.checked });
+        };
 
         socket.on("beep", () => {
             beepAudio.currentTime = 0;
@@ -443,6 +475,10 @@
 
             const isGameOver = Boolean(state.gameOver);
             setHostControlsLocked(isGameOver);
+
+            if (typeof state.fairPlayEnabled !== "undefined" && fairPlayToggle) {
+                fairPlayToggle.checked = Boolean(state.fairPlayEnabled);
+            }
 
             if (isGameOver) {
                 if (statusTimeoutId) clearTimeout(statusTimeoutId);
@@ -514,7 +550,7 @@
 
             beepStartBtn.classList.toggle("isArmed", state.phase === "armed");
 
-            renderScoreboard(state.teams, state.lockedOutTeams, state.takenTeams);
+            renderScoreboard(state.teams, state.lockedOutTeams, state.takenTeams, state.focusLockedTeams);
         });
     </script>
 </body>

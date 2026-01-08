@@ -90,7 +90,7 @@ function createRoom() {
 
     // persistent player identity for team choice (refresh-safe)
     playerTeams: new Map(), // playerId -> teamId
-
+    fairPlayEnabled: true,
     focusLockedTeams: new Set(),
   });
 
@@ -129,6 +129,7 @@ function publicRoomState(room) {
     winnerTeamId: room.winnerTeamId,
     winnerText: room.winnerText,
 
+    fairPlayEnabled: room.fairPlayEnabled,
     focusLockedTeams: Array.from(room.focusLockedTeams),
   };
 }
@@ -169,6 +170,7 @@ function resetToLobby(room) {
 
   room.lastBuzz = null;
   room.lockedOutTeams.clear();
+  room.focusLockedTeams.clear();
 
   room.firstBuzzTeamId = null;
   room.lockedByPlayerId = null;
@@ -314,6 +316,29 @@ io.on("connection", (socket) => {
     socket.data.teamId = requested;
 
     socket.emit("teamSet", { teamId: requested, locked: true });
+    emitRoomState(room.roomCode);
+  });
+
+  // Player focus tracking (FairPlay)
+  socket.on("playerFocus", ({ focused } = {}) => {
+    const room = requireRoom(socket);
+    if (!room) return;
+
+    touchRoom(room);
+
+    if (!room.fairPlayEnabled) return;
+
+    if (focused !== false) return;
+
+    if (room.phase !== "armed" && room.phase !== "locked") return;
+
+    const teamId = socket.data.teamId;
+    const playerId = socket.data.playerId;
+
+    if (!teamId || !playerId) return;
+
+    room.focusLockedTeams.add(String(teamId));
+
     emitRoomState(room.roomCode);
   });
 
@@ -530,6 +555,20 @@ io.on("connection", (socket) => {
 
   });
 
+  // Host: toggle FairPlay (anti-cheat)
+  socket.on("hostSetFairPlay", ({ enabled } = {}) => {
+    const room = requireRoom(socket);
+    if (!room) return;
+
+    touchRoom(room);
+
+    if (!isHost(socket, room)) return socket.emit("errorMsg", "Host only.");
+
+    room.fairPlayEnabled = Boolean(enabled);
+
+    emitRoomState(room.roomCode);
+  });
+
   socket.on("hostAdjustScore", ({ teamId, delta } = {}) => {
     const room = requireRoom(socket);
     if (!room) return;
@@ -547,6 +586,23 @@ io.on("connection", (socket) => {
     }
 
     room.teams[t].score += d;
+    emitRoomState(room.roomCode);
+  });
+
+  // Host: unblock focus lock for a team
+  socket.on("hostUnblockFocus", ({ teamId } = {}) => {
+    const room = requireRoom(socket);
+    if (!room) return;
+
+    touchRoom(room);
+
+    if (!isHost(socket, room)) return socket.emit("errorMsg", "Host only.");
+
+    const t = String(teamId || "").trim();
+    if (!room.teams[t]) return socket.emit("errorMsg", "Invalid team.");
+
+    room.focusLockedTeams.delete(t);
+
     emitRoomState(room.roomCode);
   });
 
@@ -615,9 +671,10 @@ io.on("connection", (socket) => {
       return socket.emit("buzzRejected", { reason: "TEAM_LOCKED_OUT" });
     }
 
-    if (room.focusLockedTeams.has(String(teamId))) {
+    if (room.fairPlayEnabled && room.focusLockedTeams.has(String(teamId))) {
       return socket.emit("buzzRejected", { reason: "FOCUS_LOCKED" });
     }
+
 
     room.phase = "locked";
 

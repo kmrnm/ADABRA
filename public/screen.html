@@ -41,6 +41,10 @@
             <div id="lockedBanner" class="lockedBanner" style="display:none;">—</div>
             <div id="timeUpBanner" class="lockedBanner err" style="display:none;">TIME IS UP!</div>
 
+            <div id="focusBanner" class="lockedBanner err" style="display:none;">
+                —
+            </div>
+
             <div class="screenBody">
                 <div class="screenCol">
                     <div class="muted" style="font-weight:900; letter-spacing:.4px;">Scoreboard</div>
@@ -64,7 +68,6 @@
 
     <div id="confettiWrap" class="confettiWrap"></div>
 
-    <!-- ✅ Winner overlay MUST be before script so query works -->
     <div id="winnerOverlay" class="winnerOverlay" style="display:none;">
         <div id="winnerText" class="winnerText">TEAM WON</div>
     </div>
@@ -110,6 +113,7 @@
         const lockedBannerEl = document.getElementById("lockedBanner");
         const scoreboardEl = document.getElementById("scoreboard");
         const timeUpBannerEl = document.getElementById("timeUpBanner");
+        const focusBannerEl = document.getElementById("focusBanner");
         const roomQrEl = document.getElementById("roomQr");
 
         const winnerOverlayEl = document.getElementById("winnerOverlay");
@@ -196,6 +200,18 @@
             const isTimeUp = Boolean(state.timeUpAt);
             updateTimerWarning(timeEl, state.remainingMs || 0, state.phase, isTimeUp);
             timeUpBannerEl.style.display = isTimeUp ? "block" : "none";
+
+            // Focus lost banner
+            const focusLocked = Array.isArray(state.focusLockedTeams) ? state.focusLockedTeams : [];
+            if (focusBannerEl) {
+                if ((state.phase === "armed" || state.phase === "locked") && focusLocked.length > 0) {
+                    const names = focusLocked.map(tid => teamNameFromState(state, tid));
+                    focusBannerEl.style.display = "block";
+                    focusBannerEl.textContent = `FOCUS LOST: ${names.join(", ")}`;
+                } else {
+                    focusBannerEl.style.display = "none";
+                }
+            }
 
             renderScoreboard(state.teams);
 

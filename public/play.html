@@ -232,6 +232,21 @@
     }
     const playerId = getOrCreatePlayerId();
 
+    function reportFocus(focused) {
+      // Only report if we joined a room and have a team (avoid noise)
+      const chosenTeam = myTeamId || (currentRoom ? getSavedTeam(currentRoom) : null);
+      if (!currentRoom || !chosenTeam) return;
+
+      socket.emit("playerFocus", { focused: Boolean(focused) });
+    }
+
+    window.addEventListener("blur", () => reportFocus(false));
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState !== "visible") reportFocus(false);
+    });
+
+    window.addEventListener("focus", () => reportFocus(true));
+
     function roomTeamKey(roomCode) {
       return `adabra_team_v1_${roomCode}`;
     }
@@ -626,9 +641,7 @@
       else if (reason === "NOT_ARMED") setMsg("Too early. Wait for the beep.", "err");
       else if (reason === "TIME_UP") setMsg("Too late. Time is up.", "err");
       else if (reason === "TEAM_LOCKED_OUT") setMsg("Your team is locked out this round.", "err", { sticky: true });
-      else if (reason === "FOCUS_LOCKED") {
-        setMsg("Focus lost (tab/app switched). You are locked out this round.", "err", { sticky: true });
-      }
+      else if (reason === "FOCUS_LOCKED") setMsg("FOCUS LOST — Host locked your team for this round.", "err", { sticky: true });
     });
 
     socket.on("errorMsg", (text) => setMsg(text, "err"));
