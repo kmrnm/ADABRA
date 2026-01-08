@@ -555,7 +555,6 @@ io.on("connection", (socket) => {
 
   });
 
-  // Host: toggle FairPlay (anti-cheat)
   socket.on("hostSetFairPlay", ({ enabled } = {}) => {
     const room = requireRoom(socket);
     if (!room) return;
@@ -565,6 +564,10 @@ io.on("connection", (socket) => {
     if (!isHost(socket, room)) return socket.emit("errorMsg", "Host only.");
 
     room.fairPlayEnabled = Boolean(enabled);
+
+    if (!room.fairPlayEnabled) {
+      room.focusLockedTeams.clear();
+    }
 
     emitRoomState(room.roomCode);
   });
@@ -733,27 +736,6 @@ io.on("connection", (socket) => {
     room.membersCount += 1;
     socket.emit("roomState", publicRoomState(room));
   });
-
-  socket.on("playerFocus", ({ focused } = {}) => {
-    const room = requireRoom(socket);
-    if (!room) return;
-
-    if (socket.data.isHost) return;
-
-    const teamId = socket.data.teamId;
-    const playerId = socket.data.playerId;
-    if (!teamId || !playerId) return;
-
-    if (room.phase !== "armed" && room.phase !== "locked") return;
-    if (focused === false) {
-      room.focusLockedTeams.add(String(teamId));
-      io.to(room.roomCode).emit("errorMsg", `Team ${teamId} focus lost → locked out this round.`);
-      emitRoomState(room.roomCode);
-    }
-  });
-
-
-
 });
 
 server.listen(3000, () => console.log("Server running on http://localhost:3000"));

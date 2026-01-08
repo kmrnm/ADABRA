@@ -172,6 +172,7 @@
         let hostKey = null;
 
         let lastHostState = null;
+        let lastScoreboardKey = null;
 
         function isTypingIntoField() {
             const el = document.activeElement;
@@ -477,7 +478,8 @@
             setHostControlsLocked(isGameOver);
 
             if (typeof state.fairPlayEnabled !== "undefined" && fairPlayToggle) {
-                fairPlayToggle.checked = Boolean(state.fairPlayEnabled);
+                const v = Boolean(state.fairPlayEnabled);
+                if (fairPlayToggle.checked !== v) fairPlayToggle.checked = v;
             }
 
             if (isGameOver) {
@@ -550,7 +552,18 @@
 
             beepStartBtn.classList.toggle("isArmed", state.phase === "armed");
 
-            renderScoreboard(state.teams, state.lockedOutTeams, state.takenTeams, state.focusLockedTeams);
+            const sbKey = JSON.stringify({
+                teams: (state.teams || []).map(t => [t.id, t.name, t.score]),
+                lockedOut: state.lockedOutTeams || [],
+                taken: (state.takenTeams || []).map(x => [x.teamId, x.playerId]),
+                focus: state.focusLockedTeams || [],
+            });
+
+            if (sbKey !== lastScoreboardKey) {
+                lastScoreboardKey = sbKey;
+                renderScoreboard(state.teams, state.lockedOutTeams, state.takenTeams, state.focusLockedTeams);
+            }
+
         });
     </script>
 </body>

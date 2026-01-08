@@ -335,6 +335,10 @@
       const lockedOut = new Set(lastState.lockedOutTeams || []);
       const isLockedOut = lockedOut.has(chosenTeam);
 
+      const focusLocked = new Set(lastState.focusLockedTeams || []);
+      const isFocusLocked = focusLocked.has(String(chosenTeam));
+
+
       // disable buzz if locked out OR round not armed
       if (isLockedOut) {
         buzzBtn.disabled = true;
@@ -345,11 +349,9 @@
       // not locked out
       buzzBtn.disabled = (lastState.phase !== "armed");
 
-      const focusLocked = new Set(lastState.focusLockedTeams || []);
-      const isFocusLocked = focusLocked.has(chosenTeam);
       if (isFocusLocked) {
         buzzBtn.disabled = true;
-        setMsg("Focus lost. Locked out this round.", "err", { sticky: true });
+        setMsg("FOCUS LOST — You are locked for this round.", "err", { sticky: true });
         return;
       }
 
@@ -404,6 +406,7 @@
       if (isTypingIntoField()) return;
 
       const chosenTeam = myTeamId || (currentRoom ? getSavedTeam(currentRoom) : null);
+
       if (!chosenTeam) return;
       if (!lastState || lastState.phase !== "armed") return;
       if (buzzBtn.disabled) return;
@@ -543,6 +546,18 @@
 
       const chosenTeam = myTeamId || (currentRoom ? getSavedTeam(currentRoom) : null);
 
+      if (chosenTeam) {
+        const isNowFocusLocked = new Set(state.focusLockedTeams || []).has(String(chosenTeam));
+
+        const fairPlayOn = Boolean(state.fairPlayEnabled);
+
+        if ((!fairPlayOn || !isNowFocusLocked) && stickyMsg && typeof stickyMsg.text === "string") {
+          if (stickyMsg.text.startsWith("FOCUS LOST")) {
+            stickyMsg = null;
+          }
+        }
+      }
+
       teamsEl.style.display = chosenTeam ? "none" : "flex";
 
       if (chosenTeam) {
@@ -621,20 +636,6 @@
       if (roomCode !== currentRoom) return;
       hardDisableBuzzNow(); // stop spam instantly
     });
-
-    function sendFocus(focused) {
-      if (!currentRoom) return;
-      socket.emit("playerFocus", { focused });
-    }
-
-    document.addEventListener("visibilitychange", () => {
-      sendFocus(!document.hidden);
-    });
-
-    window.addEventListener("blur", () => sendFocus(false));
-    window.addEventListener("focus", () => sendFocus(true));
-
-
 
     socket.on("buzzRejected", ({ reason }) => {
       if (reason === "NO_TEAM") setMsg("Choose your team first.", "err");
