@@ -681,7 +681,7 @@ io.on("connection", (socket) => {
 
     room.phase = "locked";
 
-    // IMPORTANT: lock by PLAYER + TEAM, not socket
+    // lock by PLAYER + TEAM, not socket
     room.lockedByPlayerId = playerId;
     room.lockedByTeamId = teamId;
 
