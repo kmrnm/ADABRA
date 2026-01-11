@@ -525,7 +525,7 @@ io.on("connection", (socket) => {
     emitRoomState(room.roomCode);
   });
 
-  // Host: Correct — +1 point (paper mode), end round (back to lobby)
+  // Host: Correct — +1 point, end round (back to lobby)
   socket.on("hostCorrect", () => {
     const room = requireRoom(socket);
     if (!room) return;
