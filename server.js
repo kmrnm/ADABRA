@@ -237,7 +237,7 @@ setInterval(() => {
 }, ROOM_CLEANUP_MS);
 
 
-// Pages
+// URLs
 app.get("/", (req, res) => res.sendFile(path.join(__dirname, "public", "index.html")));
 app.get("/host", (req, res) => res.sendFile(path.join(__dirname, "public", "host.html")));
 app.get("/play", (req, res) => res.sendFile(path.join(__dirname, "public", "play.html")));
