@@ -319,7 +319,7 @@ io.on("connection", (socket) => {
     emitRoomState(room.roomCode);
   });
 
-  // Player focus tracking (FairPlay)
+  // Focus tracking (FairPlay)
   socket.on("playerFocus", ({ focused } = {}) => {
     const room = requireRoom(socket);
     if (!room) return;
