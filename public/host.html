@@ -259,8 +259,9 @@
             return t ? t.name : `Team ${teamId}`;
         }
 
-        function renderScoreboard(teams, lockedOutTeams, takenTeams, focusLockedTeams) {
+        function renderScoreboard(teams, lockedOutTeams, takenTeams, focusLockedTeams, falseStartTeams) {
             const locked = new Set(lockedOutTeams || []);
+            const falseStart = new Set(falseStartTeams || []);
             const focusLocked = new Set(focusLockedTeams || []);
             const takenMap = new Map((takenTeams || []).map(x => [String(x.teamId), x.playerId]));
 
@@ -287,6 +288,10 @@
 
                         <div class="lockout ${locked.has(t.id) ? "err" : "muted"}">
                             ${locked.has(t.id) ? "LOCKED OUT this round" : ""}
+                        </div>
+
+                        <div class="lockout ${falseStart.has(String(t.id)) ? "err" : "muted"}" style="margin-top:6px;">
+                            ${falseStart.has(String(t.id)) ? "FALSE START (locked this round)" : ""}
                         </div>
 
                         <div class="lockout ${focusLocked.has(String(t.id)) ? "err" : "muted"}" style="margin-top:6px;">
@@ -555,13 +560,14 @@
             const sbKey = JSON.stringify({
                 teams: (state.teams || []).map(t => [t.id, t.name, t.score]),
                 lockedOut: state.lockedOutTeams || [],
+                falseStart: state.falseStartTeams || [],
                 taken: (state.takenTeams || []).map(x => [x.teamId, x.playerId]),
                 focus: state.focusLockedTeams || [],
             });
 
             if (sbKey !== lastScoreboardKey) {
                 lastScoreboardKey = sbKey;
-                renderScoreboard(state.teams, state.lockedOutTeams, state.takenTeams, state.focusLockedTeams);
+                renderScoreboard(state.teams, state.lockedOutTeams, state.takenTeams, state.focusLockedTeams, state.falseStartTeams);
             }
 
         });
