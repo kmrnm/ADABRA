@@ -149,6 +149,8 @@
     let tickedThisRound = false;
     let prevRemainingMs = null;
 
+    const playerIdStored = playerId;
+
     const winnerOverlayEl = document.getElementById("winnerOverlay");
     const winnerTextEl = document.getElementById("winnerText");
 
@@ -493,22 +495,19 @@
       updateBuzzAvailability();
     });
 
-    socket.on("teamRemoved", ({ teamId } = {}) => {
-      const chosenTeam = myTeamId || (currentRoom ? getSavedTeam(currentRoom) : null);
+    socket.on("teamRemoved", ({ teamId, playerId }) => {
       if (!currentRoom) return;
 
-      if (chosenTeam && String(chosenTeam) === String(teamId)) {
-        // kick this player UI out of the team
-        myTeamId = null;
-        clearSavedTeam(currentRoom);
+      if (playerId !== playerIdStored) return;
 
-        document.getElementById("tablePicker").style.display = "block";
-        teamsEl.style.display = "flex";
+      myTeamId = null;
+      clearSavedTeam(currentRoom);
 
-        buzzBtn.disabled = true;
+      document.getElementById("tablePicker").style.display = "block";
+      teamsEl.style.display = "flex";
+      buzzBtn.disabled = true;
 
-        setMsg("Your team was removed by host.", "err", { sticky: true });
-      }
+      setMsg("🚫 Your team was removed by the host.", "err", { sticky: true });
     });
 
     socket.on("roomState", (state) => {
