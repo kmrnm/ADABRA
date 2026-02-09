@@ -232,19 +232,32 @@
     }
     const playerId = getOrCreatePlayerId();
 
+    let focusLossTimer = null;
+
     function reportFocus(focused) {
-      // Only report if we joined a room and have a team (avoid noise)
       const chosenTeam = myTeamId || (currentRoom ? getSavedTeam(currentRoom) : null);
       if (!currentRoom || !chosenTeam) return;
 
-      socket.emit("playerFocus", { focused: Boolean(focused) });
+      if (focused) {
+        if (focusLossTimer) {
+          clearTimeout(focusLossTimer);
+          focusLossTimer = null;
+        }
+        return;
+      }
+
+      if (!focusLossTimer) {
+        focusLossTimer = setTimeout(() => {
+          focusLossTimer = null;
+          socket.emit("playerFocus", { focused: false });
+        }, 800);
+      }
     }
 
     window.addEventListener("blur", () => reportFocus(false));
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState !== "visible") reportFocus(false);
     });
-
     window.addEventListener("focus", () => reportFocus(true));
 
     function roomTeamKey(roomCode) {

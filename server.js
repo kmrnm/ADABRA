@@ -363,7 +363,7 @@ io.on("connection", (socket) => {
 
     if (focused !== false) return;
 
-    if (room.phase !== "armed" && room.phase !== "locked") return;
+    if (room.phase !== "armed") return;
 
     if (room.kickedPlayers.has(String(socket.data.playerId))) return;
 
