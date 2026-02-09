@@ -628,37 +628,53 @@ io.on("connection", (socket) => {
   socket.on("hostRemoveTeam", ({ teamId } = {}) => {
     const room = requireRoom(socket);
     if (!room) return;
-
     touchRoom(room);
 
-    if (!isHost(socket, room)) return socket.emit("errorMsg", "Host only.");
+    if (!isHost(socket, room)) {
+      return socket.emit("errorMsg", "Host only.");
+    }
 
     const t = String(teamId || "").trim();
-    if (!room.teams[t]) return socket.emit("errorMsg", "Invalid team.");
-    room.removedTeams.add(t);
+    if (!room.teams[t]) {
+      return socket.emit("errorMsg", "Invalid team.");
+    }
+
+    const kickedPlayerId = room.teamTaken.get(t);
+
+    room.teamTaken.delete(t);
+
+    if (kickedPlayerId) {
+      for (const [pid, tid] of room.playerTeams.entries()) {
+        if (String(tid) === t) {
+          room.playerTeams.delete(pid);
+        }
+      }
+    }
+
+    room.teams[t].name = `Team ${t}`;
+    room.teams[t].score = 0;
+
     room.lockedOutTeams.delete(t);
     room.focusLockedTeams.delete(t);
+    room.removedTeams.add(t);
 
-    if (room.lockedByTeamId && String(room.lockedByTeamId) === t) {
+    if (room.lockedByTeamId === t) {
       room.lockedByTeamId = null;
       room.lockedByPlayerId = null;
       room.lastBuzz = null;
       room.phase = "armed";
+
       if (room.remainingMs > 0) {
         room.timerRunning = true;
         room.timerLastTickAt = Date.now();
       }
     }
 
-    const takenByPlayerId = room.teamTaken.get(t);
-    if (takenByPlayerId) {
-      room.teamTaken.delete(t);
-
-      for (const [pid, tid] of room.playerTeams.entries()) {
-        if (String(tid) === t) room.playerTeams.delete(pid);
-      }
-
-      io.to(room.roomCode).emit("teamRemoved", { teamId: t });
+    if (kickedPlayerId) {
+      io.to(room.roomCode).emit("teamRemoved", {
+        teamId: t,
+        playerId: kickedPlayerId,
+      });
     }
 
     emitRoomState(room.roomCode);
