@@ -313,6 +313,9 @@
                             <button class="btn" data-team="${t.id}" data-delta="3">+3</button>
                             <button class="btn" data-team="${t.id}" data-delta="-1">-1</button>
                         </div>
+                        <div style="margin-top:10px;">
+                            <button class="btn btn-danger" data-remove="${t.id}">REMOVE TEAM</button>
+                        </div>
                         </div>
                     </div>
                     `;
@@ -335,6 +338,13 @@
                 }
 
                 scoreboardEl.appendChild(card);
+
+                const removeBtn = card.querySelector('[data-remove]');
+                if (removeBtn) {
+                    removeBtn.onclick = () => {
+                        socket.emit("hostRemoveTeam", { teamId: removeBtn.dataset.remove });
+                    };
+                }
 
                 const scoreEl = card.querySelector(`[data-score-team="${t.id}"]`);
                 const prev = prevScores.get(String(t.id));
