@@ -279,11 +279,17 @@
       localStorage.setItem(roomTeamKey(roomCode), teamId);
     }
 
+    function clearSavedTeam(roomCode) {
+      localStorage.removeItem(roomTeamKey(roomCode));
+    }
+
     function renderTeamButtons(teams, chosenTeamId, takenTeams, myPlayerId) {
+      const removed = new Set(lastState?.removedTeams || []);
       const taken = new Map((takenTeams || []).map(x => [x.teamId, x.playerId]));
 
       teamsEl.innerHTML = "";
       for (const t of teams) {
+        if (removed.has(String(t.id))) continue; // don't show removed team
         const btn = document.createElement("button");
         btn.className = "teamBtn";
 
@@ -485,6 +491,24 @@
 
       updateMyScore();
       updateBuzzAvailability();
+    });
+
+    socket.on("teamRemoved", ({ teamId } = {}) => {
+      const chosenTeam = myTeamId || (currentRoom ? getSavedTeam(currentRoom) : null);
+      if (!currentRoom) return;
+
+      if (chosenTeam && String(chosenTeam) === String(teamId)) {
+        // kick this player UI out of the team
+        myTeamId = null;
+        clearSavedTeam(currentRoom);
+
+        document.getElementById("tablePicker").style.display = "block";
+        teamsEl.style.display = "flex";
+
+        buzzBtn.disabled = true;
+
+        setMsg("Your team was removed by host.", "err", { sticky: true });
+      }
     });
 
     socket.on("roomState", (state) => {
