@@ -670,3 +670,9 @@ body.hostLocked .btn:disabled {
 body.hostLocked .controlsCenter {
   opacity: 0.65;
 }
+.teamBtn.isRemoved {
+  opacity: 0.45;
+  cursor: not-allowed;
+  text-decoration: line-through;
+}
+
