@@ -346,6 +346,15 @@
         return;
       }
 
+      const falseStart = new Set(lastState.falseStartTeams || []);
+      const isFalseStart = falseStart.has(String(chosenTeam));
+      if (isFalseStart) {
+        buzzBtn.disabled = true;
+        setMsg("FALSE START — Locked out this round.", "err", { sticky: true });
+        return;
+      }
+
+
       // not locked out
       buzzBtn.disabled = (lastState.phase !== "armed");
 
@@ -406,9 +415,14 @@
       if (isTypingIntoField()) return;
 
       const chosenTeam = myTeamId || (currentRoom ? getSavedTeam(currentRoom) : null);
-
       if (!chosenTeam) return;
-      if (!lastState || lastState.phase !== "armed") return;
+      if (!lastState) return;
+      if (lastState.phase !== "armed") {
+        e.preventDefault();
+        socket.emit("falseStartAttempt");
+        return;
+      }
+
       if (buzzBtn.disabled) return;
 
       e.preventDefault();
@@ -598,6 +612,13 @@
         setMsg("TIME IS UP!", "err");
         return;
       }
+
+      const falseStart = new Set(state.falseStartTeams || []);
+      if (chosenTeam && falseStart.has(String(chosenTeam))) {
+        buzzBtn.disabled = true;
+        setMsg("FALSE START — Locked out this round.", "err", { sticky: true });
+      }
+
 
       // If a sticky message exists (locked out, etc.), keep it
       if (renderStickyMsgIfAny()) return;
