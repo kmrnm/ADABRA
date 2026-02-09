@@ -704,7 +704,6 @@
 
     socket.on("buzzRejected", ({ reason }) => {
       if (reason === "NO_TEAM") setMsg("Choose your team first.", "err");
-      else if (reason === "NOT_ARMED") setMsg("Too early. Wait for the beep.", "err");
       else if (reason === "TIME_UP") setMsg("Too late. Time is up.", "err");
       else if (reason === "TEAM_LOCKED_OUT") setMsg("Your team is locked out this round.", "err", { sticky: true });
       else if (reason === "FOCUS_LOCKED") setMsg("FOCUS LOST — Host locked your team for this round.", "err", { sticky: true });

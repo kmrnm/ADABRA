@@ -90,6 +90,8 @@ function createRoom() {
     winnerTeamId: null,
     winnerText: null,
 
+    beepAt: null,
+
     // teams
     maxTeams: 6,
     teams: makeTeams(2),
@@ -512,6 +514,7 @@ io.on("connection", (socket) => {
     room.timerLastTickAt = Date.now();
 
     io.to(room.roomCode).emit("beep");
+    room.beepAt = Date.now();
     emitRoomState(room.roomCode);
   });
 
