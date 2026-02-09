@@ -91,8 +91,8 @@ function createRoom() {
     playerTeams: new Map(),
     fairPlayEnabled: true,
     focusLockedTeams: new Set(),
-
     falseStartTeams: new Set(),
+    removedTeams: new Set(),
   });
 
   return { roomCode, hostKey };
@@ -134,6 +134,7 @@ function publicRoomState(room) {
     fairPlayEnabled: room.fairPlayEnabled,
     focusLockedTeams: Array.from(room.focusLockedTeams),
     falseStartTeams: Array.from(room.falseStartTeams),
+    removedTeams: Array.from(room.removedTeams),
 
   };
 }
@@ -279,11 +280,16 @@ io.on("connection", (socket) => {
     if (!socket.data.isHost && socket.data.playerId) {
       const existingTeam = room.playerTeams.get(socket.data.playerId);
       if (existingTeam) {
-        socket.data.teamId = existingTeam;
-        socket.emit("teamSet", { teamId: existingTeam, locked: true });
+        if (room.removedTeams.has(String(existingTeam))) {
+          room.playerTeams.delete(socket.data.playerId);
+          socket.data.teamId = null;
+          socket.emit("teamRemoved", { teamId: String(existingTeam) });
+        } else {
+          socket.data.teamId = existingTeam;
+          socket.emit("teamSet", { teamId: existingTeam, locked: true });
+        }
       }
     }
-
     emitRoomState(code);
   });
 
@@ -299,6 +305,10 @@ io.on("connection", (socket) => {
 
     const requested = String(teamId || "").trim();
     if (!room.teams[requested]) return socket.emit("errorMsg", "Invalid team.");
+
+    if (room.removedTeams.has(requested)) {
+      return socket.emit("errorMsg", "This team was removed by host.");
+    }
 
     // If this player already has a team, keep it (cannot change)
     const existing = room.playerTeams.get(socket.data.playerId);
@@ -615,6 +625,46 @@ io.on("connection", (socket) => {
     emitRoomState(room.roomCode);
   });
 
+  socket.on("hostRemoveTeam", ({ teamId } = {}) => {
+    const room = requireRoom(socket);
+    if (!room) return;
+
+    touchRoom(room);
+
+    if (!isHost(socket, room)) return socket.emit("errorMsg", "Host only.");
+
+    const t = String(teamId || "").trim();
+    if (!room.teams[t]) return socket.emit("errorMsg", "Invalid team.");
+    room.removedTeams.add(t);
+    room.lockedOutTeams.delete(t);
+    room.focusLockedTeams.delete(t);
+
+    if (room.lockedByTeamId && String(room.lockedByTeamId) === t) {
+      room.lockedByTeamId = null;
+      room.lockedByPlayerId = null;
+      room.lastBuzz = null;
+      room.phase = "armed";
+      if (room.remainingMs > 0) {
+        room.timerRunning = true;
+        room.timerLastTickAt = Date.now();
+      }
+    }
+
+    const takenByPlayerId = room.teamTaken.get(t);
+    if (takenByPlayerId) {
+      room.teamTaken.delete(t);
+
+      for (const [pid, tid] of room.playerTeams.entries()) {
+        if (String(tid) === t) room.playerTeams.delete(pid);
+      }
+
+      io.to(room.roomCode).emit("teamRemoved", { teamId: t });
+    }
+
+    emitRoomState(room.roomCode);
+  });
+
+
   socket.on("hostEndRound", () => {
     const room = requireRoom(socket);
     if (!room) return;
@@ -755,8 +805,14 @@ io.on("connection", (socket) => {
 
     const existingTeam = room.playerTeams.get(socket.data.playerId);
     if (existingTeam) {
-      socket.data.teamId = existingTeam;
-      socket.emit("teamSet", { teamId: existingTeam, locked: true });
+      if (room.removedTeams.has(String(existingTeam))) {
+        room.playerTeams.delete(socket.data.playerId);
+        socket.data.teamId = null;
+        socket.emit("teamRemoved", { teamId: String(existingTeam) });
+      } else {
+        socket.data.teamId = existingTeam;
+        socket.emit("teamSet", { teamId: existingTeam, locked: true });
+      }
     }
     room.membersCount += 1;
     socket.emit("roomState", publicRoomState(room));
