@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -43,7 +44,9 @@
             <div id="focusBanner" class="lockedBanner err" style="display:none;">
                 —
             </div>
-
+            <div id="fairplayBanner" class="lockedBanner err" style="display:none;">
+                —
+            </div>
             <div class="screenBody">
                 <div class="screenCol">
                     <div class="muted" style="font-weight:900; letter-spacing:.4px;">Scoreboard</div>
@@ -235,6 +238,18 @@
             } else {
                 lockedBannerEl.style.display = "none";
             }
+
+            const fairplayBannerEl = document.getElementById("fairplayBanner");
+
+            const fs = new Set(state.falseStartTeams || []);
+            if (fs.size > 0) {
+                const names = [...fs].map(teamId => teamNameFromState(state, teamId));
+                fairplayBannerEl.style.display = "block";
+                fairplayBannerEl.textContent = `FALSE START: ${names.join(", ")} (locked this round)`;
+            } else {
+                fairplayBannerEl.style.display = "none";
+            }
+
         });
 
         const TEAM_COLORS = ["#7c5cff", "#31d3ff", "#19d17f", "#ffd400", "#ff5a00", "#ff3d88"];
