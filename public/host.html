@@ -259,7 +259,8 @@
             return t ? t.name : `Team ${teamId}`;
         }
 
-        function renderScoreboard(teams, lockedOutTeams, takenTeams, focusLockedTeams, falseStartTeams) {
+        function renderScoreboard(teams, lockedOutTeams, takenTeams, focusLockedTeams, falseStartTeams, removedTeams) {
+            const removed = new Set(removedTeams || []);
             const locked = new Set(lockedOutTeams || []);
             const falseStart = new Set(falseStartTeams || []);
             const focusLocked = new Set(focusLockedTeams || []);
@@ -297,12 +298,6 @@
                         <div class="lockout ${focusLocked.has(String(t.id)) ? "err" : "muted"}" style="margin-top:6px;">
                             ${focusLocked.has(String(t.id)) ? "FOCUS LOST" : ""}
                         </div>
-
-                        ${state.removedTeams?.includes(String(t.id)) ? `
-                        <div class="lockout err" style="margin-top:6px;">
-                            REMOVED BY HOST
-                        </div>
-                        ` : ``}
 
                         ${focusLocked.has(String(t.id)) ? `
                         <div style="margin-top:10px;">

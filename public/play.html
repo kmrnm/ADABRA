@@ -149,8 +149,6 @@
     let tickedThisRound = false;
     let prevRemainingMs = null;
 
-    const playerIdStored = playerId;
-
     const winnerOverlayEl = document.getElementById("winnerOverlay");
     const winnerTextEl = document.getElementById("winnerText");
 
@@ -286,32 +284,30 @@
     }
 
     function renderTeamButtons(teams, chosenTeamId, takenTeams, myPlayerId) {
-      const removed = new Set(lastState?.removedTeams || []);
-      const taken = new Map((takenTeams || []).map(x => [x.teamId, x.playerId]));
-
+      const taken = new Map((takenTeams || []).map(x => [String(x.teamId), x.playerId]));
       teamsEl.innerHTML = "";
+
       for (const t of teams) {
-        if (removed.has(String(t.id))) continue; // don't show removed team
+        const teamId = String(t.id);
         const btn = document.createElement("button");
         btn.className = "teamBtn";
 
-        const takenBy = taken.get(t.id);
+        const takenBy = taken.get(teamId);
         const isTakenByOther = Boolean(takenBy && takenBy !== myPlayerId);
 
-        const tableLabel = `Table ${t.id}`;
-        btn.textContent = isTakenByOther ? `${tableLabel} (Taken)` : tableLabel;
-
+        btn.textContent = isTakenByOther ? `Table ${teamId} (Taken)` : `Table ${teamId}`;
         btn.disabled = Boolean(chosenTeamId) || isTakenByOther;
         btn.classList.toggle("isTaken", isTakenByOther);
 
         btn.onclick = () => {
-          if (chosenTeamId || isTakenByOther) return;
-          socket.emit("setTeam", { teamId: t.id });
+          if (btn.disabled) return;
+          socket.emit("setTeam", { teamId });
         };
 
         teamsEl.appendChild(btn);
       }
     }
+
 
     function updateMyScore() {
       const chosenTeam = myTeamId || (currentRoom ? getSavedTeam(currentRoom) : null);
@@ -510,7 +506,19 @@
       setMsg("🚫 Your team was removed by the host.", "err", { sticky: true });
     });
 
+    socket.on("kicked", ({ reason }) => {
+      myTeamId = null;
+      localStorage.removeItem(roomTeamKey(currentRoom));
+
+      buzzBtn.disabled = true;
+      teamsEl.style.display = "flex";
+      nameBox.style.display = "none";
+
+      setMsg("You were removed by host.", "err", { sticky: true });
+    });
+
     socket.on("roomState", (state) => {
+      if (lastState?.kicked === true) return;
       if (!currentRoom || state.roomCode !== currentRoom) return;
 
       if (state.gameOver) {
@@ -531,16 +539,25 @@
         lastRoundNumber = state.roundNumber;
       }
 
-      // New round, reset phase clears sticky messages
-      if (state.phase === "lobby" && !timeUpSticky) stickyMsg = null;
-
       if (state.phase === "locked" && state.lastBuzz) {
         lockBannerEl.style.display = "block";
+
+        const chosenTeam = myTeamId || (currentRoom ? getSavedTeam(currentRoom) : null);
+
+        // invalidate saved team if it no longer exists or was removed
+        if (chosenTeam) {
+          const exists = (state.teams || []).some(t => String(t.id) === String(chosenTeam));
+          const removed = (state.removedTeams || []).includes(String(chosenTeam));
+          if (!exists || removed) {
+            clearSavedTeam(currentRoom);
+            myTeamId = null;
+          }
+        }
 
         const myTeam = myTeamId || (currentRoom ? getSavedTeam(currentRoom) : null);
         const isMe = myTeam && String(state.lastBuzz.teamId) === String(myTeam);
 
-        lockBannerEl.className = "pill"; // baseline
+        lockBannerEl.className = "pill";
         if (isMe) {
           lockBannerEl.textContent = "LOCKED — Your team is answering";
           lockBannerEl.classList.add("ok", "waitPulse");
@@ -597,7 +614,9 @@
         }
       }
 
-      teamsEl.style.display = chosenTeam ? "none" : "flex";
+      const finalChosenTeam = myTeamId || (currentRoom ? getSavedTeam(currentRoom) : null);
+      teamsEl.style.display = finalChosenTeam ? "none" : "flex";
+      document.getElementById("tablePicker").style.display = finalChosenTeam ? "none" : "block";
 
       if (chosenTeam) {
         teamEl.textContent = `${teamLabel(chosenTeam)}`;
@@ -689,6 +708,7 @@
       else if (reason === "TIME_UP") setMsg("Too late. Time is up.", "err");
       else if (reason === "TEAM_LOCKED_OUT") setMsg("Your team is locked out this round.", "err", { sticky: true });
       else if (reason === "FOCUS_LOCKED") setMsg("FOCUS LOST — Host locked your team for this round.", "err", { sticky: true });
+      else if (reason === "KICKED") setMsg("🚫 You were removed by host.", "err", { sticky: true });
     });
 
     socket.on("errorMsg", (text) => setMsg(text, "err"));
