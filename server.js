@@ -173,7 +173,6 @@ function resetToLobby(room) {
   room.lockedByTeamId = null;
 
   room.lastBuzz = null;
-  room.lockedOutTeams.clear();
   room.focusLockedTeams.clear();
 
   room.firstBuzzTeamId = null;
@@ -471,7 +470,6 @@ io.on("connection", (socket) => {
     room.lockedBySocketId = null;
     room.lockedByTeamId = null;
     room.lastBuzz = null;
-    room.lockedOutTeams.clear();
 
     room.firstBuzzTeamId = null;
 
