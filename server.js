@@ -813,6 +813,10 @@ io.on("connection", (socket) => {
       return socket.emit("buzzRejected", { reason: "NOT_ARMED" });
     }
 
+    if (room.beepAt && (Date.now() - room.beepAt) < 150) {
+      return socket.emit("buzzRejected", { reason: "TOO_FAST" });
+    }
+
     if (room.remainingMs <= 0) {
       return socket.emit("buzzRejected", { reason: "TIME_UP" });
     }
