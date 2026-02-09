@@ -298,6 +298,12 @@
                             ${focusLocked.has(String(t.id)) ? "FOCUS LOST" : ""}
                         </div>
 
+                        ${state.removedTeams?.includes(String(t.id)) ? `
+                        <div class="lockout err" style="margin-top:6px;">
+                            REMOVED BY HOST
+                        </div>
+                        ` : ``}
+
                         ${focusLocked.has(String(t.id)) ? `
                         <div style="margin-top:10px;">
                             <button class="btn btn-warn" data-unfocus="${t.id}">UNBLOCK FOCUS</button>
