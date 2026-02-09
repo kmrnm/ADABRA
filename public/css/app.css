@@ -33,6 +33,7 @@
 html, body { height: 100%; }
 
 body {
+  zoom: 85%;
   margin: 0;
   font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
   color: var(--text);
@@ -675,4 +676,5 @@ body.hostLocked .controlsCenter {
   cursor: not-allowed;
   text-decoration: line-through;
 }
+
 
