@@ -419,6 +419,8 @@
       if (!lastState) return;
       if (lastState.phase !== "armed") {
         e.preventDefault();
+        unlockAudio();
+        playBuzzSound();
         socket.emit("falseStartAttempt");
         return;
       }
