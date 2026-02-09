@@ -49,50 +49,51 @@ function makeTeams(count) {
 function createRoom() {
   const roomCode = createUniqueRoomCode();
   const hostKey = randomString(24);
+  falseStartTeams: new Set(),
 
-  rooms.set(roomCode, {
-    roomCode,
-    hostKey,
-    createdAt: Date.now(),
-    lastActivityAt: Date.now(),
-    timeUpAt: null,
-    membersCount: 0,
+    rooms.set(roomCode, {
+      roomCode,
+      hostKey,
+      createdAt: Date.now(),
+      lastActivityAt: Date.now(),
+      timeUpAt: null,
+      membersCount: 0,
 
-    teamTaken: new Map(),
-    teamNameLocked: new Set(), // teamId: can rename only once per session
+      teamTaken: new Map(),
+      teamNameLocked: new Set(), // teamId: can rename only once per session
 
-    // round state
-    phase: "lobby", // "lobby" | "armed" | "locked"
-    roundNumber: 0,
+      // round state
+      phase: "lobby", // "lobby" | "armed" | "locked"
+      roundNumber: 0,
 
-    // timing
-    durationMs: 15000,
-    remainingMs: 15000,
-    timerRunning: false,
-    timerLastTickAt: null,
+      // timing
+      durationMs: 15000,
+      remainingMs: 15000,
+      timerRunning: false,
+      timerLastTickAt: null,
 
-    // buzz state
-    lockedBySocketId: null,
-    lockedByTeamId: null,
-    lastBuzz: null, // { by, teamId } or null
-    lockedByPlayerId: null,
+      // buzz state
+      lockedBySocketId: null,
+      lockedByTeamId: null,
+      lastBuzz: null, // { by, teamId } or null
+      lockedByPlayerId: null,
 
-    gameOver: false,
-    winnerTeamId: null,
-    winnerText: null,
+      gameOver: false,
+      winnerTeamId: null,
+      winnerText: null,
 
-    // teams
-    maxTeams: 6,
-    teams: makeTeams(2),
+      // teams
+      maxTeams: 6,
+      teams: makeTeams(2),
 
-    // per-round lockout: teams that cannot buzz again after incorrect
-    lockedOutTeams: new Set(),
+      // per-round lockout: teams that cannot buzz again after incorrect
+      lockedOutTeams: new Set(),
 
-    // persistent player identity for team choice (refresh-safe)
-    playerTeams: new Map(), // playerId -> teamId
-    fairPlayEnabled: true,
-    focusLockedTeams: new Set(),
-  });
+      // persistent player identity for team choice (refresh-safe)
+      playerTeams: new Map(), // playerId -> teamId
+      fairPlayEnabled: true,
+      focusLockedTeams: new Set(),
+    });
 
   return { roomCode, hostKey };
 }
@@ -131,6 +132,8 @@ function publicRoomState(room) {
 
     fairPlayEnabled: room.fairPlayEnabled,
     focusLockedTeams: Array.from(room.focusLockedTeams),
+    falseStartTeams: Array.from(room.falseStartTeams),
+
   };
 }
 
@@ -179,6 +182,7 @@ function resetToLobby(room) {
   room.winnerTeamId = null;
   room.winnerText = null;
 
+  room.falseStartTeams.clear();
   room.focusLockedTeams.clear();
 }
 
@@ -458,6 +462,9 @@ io.on("connection", (socket) => {
 
     //room.roundNumber += 1;
 
+    room.falseStartTeams.clear();
+    room.focusLockedTeams.clear();
+
     // start armed round
     room.phase = "armed";
     room.lockedBySocketId = null;
@@ -649,6 +656,25 @@ io.on("connection", (socket) => {
 
     emitRoomState(room.roomCode);
   });
+
+  socket.on("falseStartAttempt", () => {
+    const room = requireRoom(socket);
+    if (!room) return;
+
+    touchRoom(room);
+
+    if (room.phase !== "lobby") return;
+
+    const teamId = socket.data.teamId;
+    const playerId = socket.data.playerId;
+    if (!teamId || !playerId) return;
+
+    room.lockedOutTeams.add(String(teamId));
+    room.falseStartTeams.add(String(teamId));
+
+    emitRoomState(room.roomCode);
+  });
+
 
   // Player buzz (no false-start feature)
   socket.on("buzz", () => {
