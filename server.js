@@ -773,6 +773,10 @@ io.on("connection", (socket) => {
     room.lockedOutTeams.add(String(teamId));
     room.falseStartTeams.add(String(teamId));
 
+    io.to(room.roomCode).emit("falseStartFx", {
+      teamId: String(teamId)
+    });
+
     emitRoomState(room.roomCode);
   });
 

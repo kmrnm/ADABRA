@@ -450,6 +450,13 @@
             buzzAudio.play().catch(() => { });
         });
 
+        socket.on("falseStartFx", ({ teamId }) => {
+            buzzAudio.currentTime = 0;
+            buzzAudio.play().catch(() => { });
+            setStatus(`FALSE START — Team ${teamId}`, "err");
+        });
+
+
         let statusTimeoutId = null;
         let timeUpSticky = false;
 
